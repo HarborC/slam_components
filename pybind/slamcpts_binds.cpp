@@ -22,8 +22,14 @@ PYBIND11_MODULE(pyslamcpts, m) {
       .def("clear", &SparseMap::clear, "clear the sparse map")
       .def("set_calibration", &SparseMap::setCalibration,
            "set calibration of the sparse map")
-      .def("add_keyframe", &SparseMap::addKeyFrame,
-           "add key frame to the sparse map")
+      .def("add_keyframe", static_cast<void (SparseMap::*)(
+               const FrameIDType &, const std::vector<cv::Mat> &,
+               const std::vector<std::vector<Eigen::Vector2d>> &,
+               const std::vector<std::vector<Eigen::Vector3d>> &,
+               const std::vector<cv::Mat> &)>(&SparseMap::addKeyFrame),
+           "add key frame to the sparse map", 
+           py::arg("id"), py::arg("imgs"), py::arg("keypoints"), 
+           py::arg("bearings"), py::arg("descriptors") = std::vector<cv::Mat>())
       .def("remove_keyframe", &SparseMap::removeKeyFrame,
            "remove key frame from the sparse map")
       .def("add_intra_matches", &SparseMap::addIntraMatches,

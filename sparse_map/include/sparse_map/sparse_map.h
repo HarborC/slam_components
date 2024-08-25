@@ -5,7 +5,9 @@
 
 class SparseMap {
 public:
-  SparseMap(bool use_ransac) : use_ransac_(use_ransac) {}
+  EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+  using Ptr = std::shared_ptr<SparseMap>;
+  SparseMap(bool use_ransac = true) : use_ransac_(use_ransac) {}
   ~SparseMap() {
     clear();
     std::cout << "SparseMap is destructed" << std::endl;
@@ -23,7 +25,10 @@ public:
 
   void addKeyFrame(const FrameIDType &id, const std::vector<cv::Mat> &imgs,
                    const std::vector<std::vector<Eigen::Vector2d>> &keypoints,
-                   const std::vector<std::vector<Eigen::Vector3d>> &bearings);
+                   const std::vector<std::vector<Eigen::Vector3d>> &bearings,
+                   const std::vector<cv::Mat> &descriptors = {});
+
+  void addKeyFrame(const Frame::Ptr& frame) ;
 
   void removeKeyFrame(const FrameIDType &id);
 
@@ -65,6 +70,6 @@ public:
   FeatureMap feature_map_;
   FrameMap frame_map_;
   bool use_ransac_ = true;
-  int cam_num_ = 0;
-  std::vector<Eigen::Matrix4d> calibrations_; // Tbc
+  int cam_num_ = 1;
+  std::vector<Eigen::Matrix4d> calibrations_ = {Eigen::Matrix4d::Identity()}; // Tbc
 };

@@ -1,9 +1,11 @@
 #include "sparse_map/frame.h"
+#include "sparse_map/detector.h"
 
 void Frame::addData(
     const std::vector<cv::Mat> &_imgs,
     const std::vector<std::vector<Eigen::Vector2d>> &_keypoints,
-    const std::vector<std::vector<Eigen::Vector3d>> &_bearings) {
+    const std::vector<std::vector<Eigen::Vector3d>> &_bearings,
+    const std::vector<cv::Mat> &_descriptors) {
   assert(_imgs.size() == _bearings.size());
   assert(_keypoints.size() == _bearings.size());
   cam_num_ = _imgs.size();
@@ -11,6 +13,7 @@ void Frame::addData(
 
   keypoints_ = _keypoints;
   bearings_ = _bearings;
+  descriptors_ = _descriptors;
 
   feature_ids_.resize(cam_num_);
   for (size_t i = 0; i < cam_num_; ++i) {
@@ -18,6 +21,42 @@ void Frame::addData(
     imgs_.push_back(_imgs[i].clone());
   }
 }
+
+void Frame::extractFeature(const std::vector<cv::Mat> &_imgs,
+                           std::string detector_type) {
+  cam_num_ = _imgs.size();
+  Tcw_.resize(cam_num_);
+
+  keypoints_.resize(cam_num_);
+  bearings_.resize(cam_num_);
+  descriptors_.resize(cam_num_);
+  imgs_.clear();
+  for (size_t i = 0; i < cam_num_; ++i) {
+    imgs_.push_back(_imgs[i].clone());
+  }
+
+  Detector detector;
+  for (size_t i = 0; i < cam_num_; ++i) {
+    std::vector<cv::KeyPoint> kpts;
+    cv::Mat descriptors;
+    if (detector_type == "ORB") {
+      detector.detectORB(_imgs[i], kpts, descriptors);
+    } else {
+      std::cerr << "Unknown detector type: " << detector_type << std::endl;
+      return;
+    }
+    keypoints_[i].resize(kpts.size());
+    for (size_t j = 0; j < kpts.size(); ++j) {
+      keypoints_[i][j] = Eigen::Vector2d(kpts[j].pt.x, kpts[j].pt.y);
+    }
+  }
+
+  feature_ids_.resize(cam_num_);
+  for (size_t i = 0; i < cam_num_; ++i) {
+    feature_ids_[i].resize(keypoints_[i].size(), -1);
+  }
+}
+
 
 cv::Mat Frame::drawKeyPoint(const int &cam_id) {
   cv::Mat img = imgs_[cam_id].clone();

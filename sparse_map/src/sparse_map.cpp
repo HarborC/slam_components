@@ -3,11 +3,26 @@
 void SparseMap::addKeyFrame(
     const FrameIDType &id, const std::vector<cv::Mat> &imgs,
     const std::vector<std::vector<Eigen::Vector2d>> &keypoints,
-    const std::vector<std::vector<Eigen::Vector3d>> &bearings) {
+    const std::vector<std::vector<Eigen::Vector3d>> &bearings,
+    const std::vector<cv::Mat> &descriptors) {
   assert(imgs.size() == cam_num_);
   Frame::Ptr cur_frame(new Frame(id));
-  cur_frame->addData(imgs, keypoints, bearings);
+  cur_frame->addData(imgs, keypoints, bearings, descriptors);
   frame_map_[cur_frame->id_] = cur_frame;
+}
+
+void SparseMap::addKeyFrame(const Frame::Ptr& frame) {
+  if (!frame) {
+    std::cerr << "Error: frame is nullptr" << std::endl;
+    return;
+  }
+
+  if (frame->cam_num_ != cam_num_) {
+    std::cerr << "Error: cam_num_ != cam_num" << std::endl;
+    return;
+  }
+
+  frame_map_[frame->id_] = frame;
 }
 
 void SparseMap::updateFeatureMap() {
