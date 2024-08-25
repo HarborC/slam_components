@@ -36,3 +36,5 @@ install(EXPORT ${PROJECT_NAME}-targets
         FILE ${PROJECT_NAME}-config.cmake
         DESTINATION share/cmake/${PROJECT_NAME}/
      )
+
+# add_subdirectory(apps)
