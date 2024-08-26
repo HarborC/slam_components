@@ -7,13 +7,28 @@
 #include "utils/log_utils.h"
 #include "sparse_map/sparse_map.h"
 
+#include "foxglove/foxglove_server.h"
+#include "foxglove/proto/FrameTransform.pb.h"
+#include "foxglove/proto/PointCloud.pb.h"
+#include "foxglove/proto/PoseInFrame.pb.h"
+#include "foxglove/proto/PosesInFrame.pb.h"
+#include "foxglove/utility.h"
+
 using namespace Eigen;
 
 // Step 1: read images sequence from the directory
 // Step 2: extract features from the images
 // Step 3: match features between images
 
+namespace fg_msg = ::foxglove;
+namespace fg = ::foxglove_viz::foxglove;
+using namespace foxglove_viz::foxglove;
+
 int main (int argc, char** argv) {
+
+    FoxgloveServer server(8088);
+    server.Run();
+    std::this_thread::sleep_for(std::chrono::seconds(5));
 
     std::string img_dir = "/mnt/h/TMP/TXPJ/test1/sub";
     std::string img_format = "jpg";
@@ -33,7 +48,7 @@ int main (int argc, char** argv) {
         
         frame->extractFeature(imgs, "ORB");
         // keshihua
-
+        
         
         sparse_map->addKeyFrame(frame);
     }

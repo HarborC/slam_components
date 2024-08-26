@@ -26,5 +26,8 @@ include_directories(${CERES_INCLUDE_DIRS})
 find_package(Eigen3 REQUIRED)
 include_directories(${EIGEN3_INCLUDE_DIR})
 
+find_package(PCL REQUIRED)
+include_directories(${PCL_INCLUDE_DIR})
+
 add_subdirectory(sparse_map)
 add_subdirectory(pybind)
