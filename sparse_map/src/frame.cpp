@@ -41,6 +41,8 @@ void Frame::extractFeature(const std::vector<cv::Mat> &_imgs,
     cv::Mat descriptors;
     if (detector_type == "ORB") {
       detector.detectORB(_imgs[i], kpts, descriptors);
+    } else if (detector_type == "SIFT") {
+      detector.detectSIFT(_imgs[i], kpts, descriptors);
     } else {
       std::cerr << "Unknown detector type: " << detector_type << std::endl;
       return;

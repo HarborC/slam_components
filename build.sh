@@ -11,3 +11,5 @@ cd build
 cmake -DCMAKE_BUILD_TYPE=Release ..
 make -j
 make install
+
+/mnt/g/projects/slam/thirdparty/slam_components/build/sparse_map/apps/seq_data_test

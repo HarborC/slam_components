@@ -11,8 +11,6 @@ public:
   Frame(FrameIDType _id) : id_(_id) {}
   virtual ~Frame() {}
 
-  void dsds();
-
   void addData(const std::vector<cv::Mat> &_imgs,
                const std::vector<std::vector<Eigen::Vector2d>> &_keypoints,
                const std::vector<std::vector<Eigen::Vector3d>> &_bearings,

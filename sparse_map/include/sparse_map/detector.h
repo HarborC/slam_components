@@ -10,4 +10,6 @@ public:
   void detectORB(const cv::Mat &img, std::vector<cv::KeyPoint> &keypoints,
                  cv::Mat &descriptors, const cv::Mat &mask = cv::Mat());
 
+  void detectSIFT(const cv::Mat &img, std::vector<cv::KeyPoint> &keypoints,
+                  cv::Mat &descriptors, const cv::Mat &mask = cv::Mat());
 };
