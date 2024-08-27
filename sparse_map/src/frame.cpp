@@ -51,6 +51,7 @@ void Frame::extractFeature(const std::vector<cv::Mat> &_imgs,
     for (size_t j = 0; j < kpts.size(); ++j) {
       keypoints_[i][j] = Eigen::Vector2d(kpts[j].pt.x, kpts[j].pt.y);
     }
+    descriptors_[i] = descriptors.clone();
   }
 
   feature_ids_.resize(cam_num_);
@@ -87,6 +88,9 @@ cv::Mat Frame::drawMatchedKeyPoint(const int &cam_id) {
     cv::circle(img,
                cv::Point(keypoints_[cam_id][i](0), keypoints_[cam_id][i](1)), 2,
                cv::Scalar(0, 255, 0), 2);
+    cv::putText(img, std::to_string(feature_ids_[cam_id][i]),
+                cv::Point(keypoints_[cam_id][i](0), keypoints_[cam_id][i](1)),
+                cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(0, 255, 0), 1);
   }
   return img;
 }
