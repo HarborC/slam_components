@@ -21,9 +21,10 @@ using namespace foxglove_viz;
 #include <iostream>
 #include <Eigen/Dense>
 
-Eigen::Matrix3d gpsTo(double yaw, double pitch, double roll);
+// llh to NUE(北天东)坐标系
+Eigen::Matrix3d llhToNUE(double yaw, double pitch, double roll);
 
-Eigen::Matrix3d nedToBody(double yaw, double pitch, double roll) {
+Eigen::Matrix3d nueToBody(double yaw, double pitch, double roll) {
     Eigen::Matrix3d R;
 
     double cos_yaw = std::cos(yaw);
@@ -48,7 +49,7 @@ Eigen::Matrix3d nedToBody(double yaw, double pitch, double roll) {
     return R;
 }
 
-Eigen::Matrix3d bodyToVision(double qy, double qz) {
+Eigen::Matrix3d bodyToCamera(double qy, double qz) {
     Eigen::Matrix3d R;
 
     double cos_qy = std::cos(qy);
@@ -115,23 +116,24 @@ int main (int argc, char** argv) {
 
     Visualizer server(8088);
 
-    std::string img_dir = "/mnt/g/projects/slam/datasets/TXPJ/test1/sub";
+    
+    std::string img_dir = "../../../datasets/TXPJ/test1/sub";
     std::string img_format = "jpg";
 
-    auto ins_data = readCSV("/mnt/g/projects/slam/datasets/TXPJ/test1/ins1.csv");
+    auto ins_data = readCSV("../../../datasets/TXPJ/test1/ins1.csv");
 
     return 0;
 
     int scale = 4;
 
-    double f = 33400;
-    double cx = 4096 / 2;
-    double cy = 3072 / 2;
+    double f = 33400 / scale;
+    double cx = 4096 / 2 / scale;
+    double cy = 3072 / 2 / scale;
 
     std::vector<std::string> img_files = Utils::GetFileList(img_dir);
     std::sort(img_files.begin(), img_files.end());
 
-    SparseMap::Ptr sparse_map(new SparseMap(false));
+    SparseMap::Ptr sparse_map(new SparseMap(true));
 
     Frame::Ptr last_frame;
     for (int i = 0; i < img_files.size(); i++) {
@@ -147,6 +149,15 @@ int main (int argc, char** argv) {
         imgs.push_back(img);
         
         frame->extractFeature(imgs, "ORB");
+
+        frame->bearings_[0].resize(frame->keypoints_[0].size());
+        for (int j = 0; j < frame->keypoints_[0].size(); j++) {
+            Eigen::Vector2d kp = frame->keypoints_[0][j];
+            Eigen::Vector3d bearing;
+            bearing << (kp.x() - cx) / f, (kp.y() - cy) / f, 1;
+            frame->bearings_[0][j] = bearing;
+        }
+
         // keshihua
         cv::Mat timg = frame->drawKeyPoint(0);
         server.showImage("image", frame->id_, timg);
@@ -168,6 +179,7 @@ int main (int argc, char** argv) {
                 Eigen::Vector2i match(matches[i].queryIdx, matches[i].trainIdx);
                 intra_matches_0.push_back(match);
             }
+            
             std::vector<std::vector<Eigen::Vector2i>> intra_matches;
             intra_matches.push_back(intra_matches_0);
             std::cout << "addIntraMatches done1" << std::endl;
