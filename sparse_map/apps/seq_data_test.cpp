@@ -21,8 +21,31 @@ using namespace foxglove_viz;
 #include <iostream>
 #include <Eigen/Dense>
 
+// WGS84楠球参数
+const double a = 6378137.0;
+const double b = 6356752.3142;
+const double f = (a - b) / a;
+
+Eigen::Vector3d llhToECEF(double lat, double lon, double alt) {
+    double e2 = f * (2 - f);
+
+    double N = a / std::sqrt(1 - e2 * std::sin(lat) * std::sin(lat));
+
+    Eigen::Vector3d xyz;
+    xyz(0) = (N + alt) * std::cos(lat) * std::cos(lon);
+    xyz(1) = (N + alt) * std::cos(lat) * std::sin(lon);
+    xyz(2) = (N * (1 - e2) + alt) * std::sin(lat);
+
+    return xyz;
+}
+
 // llh to NUE(北天东)坐标系
-Eigen::Matrix3d llhToNUE(double yaw, double pitch, double roll);
+Eigen::Vector3d ecefToNUE(double x, double y, double z, double lat0, double lon0) {
+    Eigen::Vector3d nue;
+
+
+    return nue;
+}
 
 Eigen::Matrix3d nueToBody(double yaw, double pitch, double roll) {
     Eigen::Matrix3d R;
@@ -40,7 +63,7 @@ Eigen::Matrix3d nueToBody(double yaw, double pitch, double roll) {
 
     R(1, 0) = sin_yaw * sin_roll - cos_yaw * sin_pitch * cos_roll;
     R(1, 1) = cos_pitch * cos_roll;
-    R(1, 2) = cos_yaw * sin_roll + sin_yaw * sin_pitch * cos_roll;
+    R(1, 2) = sin_yaw * cos_roll + sin_yaw * sin_roll * cos_yaw;
 
     R(2, 0) = sin_yaw * cos_roll + cos_yaw * sin_pitch * sin_roll;
     R(2, 1) = -cos_pitch * sin_roll;
@@ -122,7 +145,7 @@ int main (int argc, char** argv) {
 
     auto ins_data = readCSV("../../../datasets/TXPJ/test1/ins1.csv");
 
-    return 0;
+    // return 0;
 
     int scale = 4;
 
