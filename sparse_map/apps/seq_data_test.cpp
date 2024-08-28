@@ -40,9 +40,20 @@ Eigen::Vector3d llhToECEF(double lat, double lon, double alt) {
 }
 
 // llh to NUE(北天东)坐标系
-Eigen::Vector3d ecefToNUE(double x, double y, double z, double lat0, double lon0) {
-    Eigen::Vector3d nue;
+Eigen::Vector3d llhToNUE(double lat, double lon, double hei, double lat0, double lon0) {
 
+    Eigen::Vector3d xyz0 = llhToECEF(lat0, lon0, 0);
+
+    Eigen::Vector3d xyz = llhToECEF(lat, lon, hei);
+
+    Eigen::Vector3d dxyz = xyz - xyz0;
+
+    Eigen::Matrix3d R;
+    R << -std::sin(lat0) * std::cos(lon0), -std::sin(lat0) * std::sin(lon0), std::cos(lat0),
+         std::cos(lat0) * std::cos(lon0), std::cos(lat0) * std::sin(lon0), std::sin(lat0),
+         -std::sin(lon0), std::cos(lon0), 0;
+
+    Eigen::Vector3d nue = R * dxyz;
 
     return nue;
 }
@@ -136,16 +147,12 @@ std::map<std::string, std::vector<double>> readCSV(const std::string& filename) 
 }
 
 int main (int argc, char** argv) {
-
     Visualizer server(8088);
 
-    
     std::string img_dir = "../../../datasets/TXPJ/test1/sub";
     std::string img_format = "jpg";
 
     auto ins_data = readCSV("../../../datasets/TXPJ/test1/ins1.csv");
-
-    // return 0;
 
     int scale = 4;
 
@@ -159,8 +166,35 @@ int main (int argc, char** argv) {
     SparseMap::Ptr sparse_map(new SparseMap(true));
 
     Frame::Ptr last_frame;
+    double lat0, lon0, alt0;
     for (int i = 0; i < img_files.size(); i++) {
         std::cout << img_files[i] << std::endl;
+
+        std::string basename = Utils::GetPathBaseName(img_files[i]);
+
+        std::vector<double> ins = ins_data[basename];
+        double qy = ins[0] * M_PI / 180;
+        double qz = ins[1] * M_PI / 180;
+        double pitch = ins[2] * M_PI / 180;
+        double yaw = ins[3] * M_PI / 180;
+        double roll = ins[4] * M_PI / 180;
+        double lat = ins[5] * M_PI / 180;
+        double lon = ins[6] * M_PI / 180;
+        double alt = ins[7];
+
+        if (i == 0) {
+            lat0 = lat;
+            lon0 = lon;
+            alt0 = alt;
+        }
+
+        Eigen::Matrix3d R_nue2body = nueToBody(yaw, pitch, roll);
+        Eigen::Matrix3d R_body2camera = bodyToCamera(qy, qz);
+        Eigen::Vector3d t_nue = llhToNUE(lat, lon, alt, lat0, lon0);
+        Eigen::Matrix3d R_nue = (R_body2camera * R_nue2body).transpose();
+        Eigen::Matrix4d T_wc = Eigen::Matrix4d::Identity();
+        T_wc.block(0, 0, 3, 3) = R_nue;
+        T_wc.block(0, 3, 3, 1) = t_nue;
 
         Frame::Ptr frame(new Frame(frame_next_id++));
         std::vector<cv::Mat> imgs;
@@ -180,6 +214,8 @@ int main (int argc, char** argv) {
             bearing << (kp.x() - cx) / f, (kp.y() - cy) / f, 1;
             frame->bearings_[0][j] = bearing;
         }
+
+        frame->Twb_ = T_wc;
 
         // keshihua
         cv::Mat timg = frame->drawKeyPoint(0);
