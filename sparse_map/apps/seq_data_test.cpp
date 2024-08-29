@@ -163,6 +163,8 @@ int main (int argc, char** argv) {
     std::vector<std::string> img_files = Utils::GetFileList(img_dir);
     std::sort(img_files.begin(), img_files.end());
 
+    std::vector<Eigen::Matrix4f> poses;
+
     SparseMap::Ptr sparse_map(new SparseMap(true));
 
     Frame::Ptr last_frame;
@@ -173,6 +175,10 @@ int main (int argc, char** argv) {
         std::string basename = Utils::GetPathBaseName(img_files[i]);
 
         std::vector<double> ins = ins_data[basename];
+        for (int i = 0; i < ins.size(); i++) {
+            std::cout << ins[i] << " ";
+        }
+        std::cout << std::endl;
         double qy = ins[0] * M_PI / 180;
         double qz = ins[1] * M_PI / 180;
         double pitch = ins[2] * M_PI / 180;
@@ -196,11 +202,11 @@ int main (int argc, char** argv) {
         T_wc.block(0, 0, 3, 3) = R_nue;
         T_wc.block(0, 3, 3, 1) = t_nue;
 
+        poses.push_back(T_wc.cast<float>());
+
         Frame::Ptr frame(new Frame(frame_next_id++));
         std::vector<cv::Mat> imgs;
         cv::Mat img = cv::imread(img_files[i], cv::IMREAD_COLOR);
-
-        // 降采样4倍
         cv::resize(img, img, cv::Size(img.cols / scale, img.rows / scale));
 
         imgs.push_back(img);
@@ -217,7 +223,6 @@ int main (int argc, char** argv) {
 
         frame->Twb_ = T_wc;
 
-        // keshihua
         cv::Mat timg = frame->drawKeyPoint(0);
         server.showImage("image", frame->id_, timg);
         
@@ -225,13 +230,10 @@ int main (int argc, char** argv) {
 
         if (last_frame) {
             const cv::Mat &descriptors1 = last_frame->descriptors_[0];
-            std::cout << "descriptors1 size: " << descriptors1.rows << std::endl;
             const cv::Mat &descriptors2 = frame->descriptors_[0];
-            std::cout << "descriptors2 size: " << descriptors2.rows << std::endl;
             std::vector<cv::DMatch> matches;
             Matcher matcher;
             matcher.matchORB(descriptors1, descriptors2, matches);
-            std::cout << "matches size: " << matches.size() << std::endl;
 
             std::vector<Eigen::Vector2i> intra_matches_0;
             for (int i = 0; i < matches.size(); i++) {
@@ -241,9 +243,7 @@ int main (int argc, char** argv) {
             
             std::vector<std::vector<Eigen::Vector2i>> intra_matches;
             intra_matches.push_back(intra_matches_0);
-            std::cout << "addIntraMatches done1" << std::endl;
             sparse_map->addIntraMatches(last_frame->id_, frame->id_, intra_matches);
-            std::cout << "addIntraMatches done" << std::endl;
         }
 
         // cv::Mat timg2 = sparse_map->drawMatchedKeypoint(frame->id_, 0);
@@ -251,6 +251,8 @@ int main (int argc, char** argv) {
 
         cv::Mat timg3 = sparse_map->drawFlow(frame->id_, 0);
         server.showImage("flow_image", frame->id_, timg3);
+
+        server.showPath("ins_path", frame->id_, poses, "NUE");
 
         std::cout << "frame id: " << frame->id_ << std::endl;
 
