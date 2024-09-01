@@ -327,17 +327,20 @@ int main (int argc, char** argv) {
         std::vector<Eigen::Vector2i> flow_matches = opticalFlow(prev_flow_img, curr_flow_img_processed, prev_flow_pts, curr_flow_pts);
         
         // 计算光流的中位数
-        std::vector<double> flow_distances;
-        for (int j = 0; j < flow_matches.size(); j++) {
-            cv::Point2f p1 = prev_flow_pts[flow_matches[j].x];
-            cv::Point2f p2 = curr_flow_pts[flow_matches[j].y];
-            flow_distances.push_back(distance(p1, p2));
-        }
-        std::sort(flow_distances.begin(), flow_distances.end());
-        double median_flow_distance = flow_distances[flow_distances.size() / 2];
-        std::cout << "median flow distance: " << median_flow_distance << std::endl;
+        if (flow_matches.size()) {
+            std::vector<double> flow_distances;
+            for (int j = 0; j < flow_matches.size(); j++) {
+                cv::Point2f p1 = prev_flow_pts[flow_matches[j].x()];
+                cv::Point2f p2 = curr_flow_pts[flow_matches[j].y()];
+                flow_distances.push_back(distance(p1, p2));
+            }
+            std::sort(flow_distances.begin(), flow_distances.end());
+            double median_flow_distance = flow_distances[flow_distances.size() / 2];
+            std::cout << "median flow distance: " << median_flow_distance << std::endl;
 
-        // bool is_max_flow = median_flow_distance > 10;
+            bool is_max_flow = median_flow_distance > 10;
+        }
+        
         
         std::vector<Eigen::Vector3d> flow_bearings;
         for (int j = 0; j < curr_flow_pts.size(); j++) {
