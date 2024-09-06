@@ -39,7 +39,7 @@ Eigen::Vector3d llhToECEF(double lat, double lon, double alt) {
 }
 
 // llh to NUE(北天东)坐标系
-Eigen::Vector3d llhToNUE(double lat, double lon, double hei, double lat0, double lon0, double hei0 = 0) {
+Eigen::Vector3d llhToENU(double lat, double lon, double hei, double lat0, double lon0, double hei0 = 0) {
 
     Eigen::Vector3d xyz0 = llhToECEF(lat0, lon0, hei0);
 
@@ -48,9 +48,10 @@ Eigen::Vector3d llhToNUE(double lat, double lon, double hei, double lat0, double
     Eigen::Vector3d dxyz = xyz - xyz0;
 
     Eigen::Matrix3d R;
-    R << -std::sin(lat0) * std::cos(lon0), -std::sin(lat0) * std::sin(lon0), std::cos(lat0),
-         std::cos(lat0) * std::cos(lon0), std::cos(lat0) * std::sin(lon0), std::sin(lat0),
-         -std::sin(lon0), std::cos(lon0), 0;
+    R << -std::sin(lon0), std::cos(lon0), 0,
+         -std::sin(lat0) * std::cos(lon0), -std::sin(lat0) * std::sin(lon0), std::cos(lat0),
+         std::cos(lat0) * std::cos(lon0), std::cos(lat0) * std::sin(lon0), std::sin(lat0);
+         
 
     Eigen::Vector3d nue = R * dxyz;
 
@@ -124,7 +125,7 @@ std::map<std::string, std::vector<double>> readCSV(const std::string& filename) 
         std::vector<std::string> items = Utils::StringSplit(line, ",");
         std::string name = items[0];
         std::vector<double> data;
-        for (int i = 1; i < items.size() - 1; i++) {
+        for (int i = 1; i < items.size(); i++) {
             data.push_back(std::stod(items[i]));
         }
         ins_data[name] = data;
@@ -182,7 +183,7 @@ cv::Mat getVaildMask(const std::vector<cv::Point2f> &pts, const cv::Mat &mask) {
   return mask_updated.clone();
 }
 
-std::vector<Eigen::Vector2i> opticalFlow(const cv::Mat &prev_img, const cv::Mat& curr_img, const std::vector<cv::Point2f> &prev_pts, std::vector<cv::Point2f> &curr_pts, bool double_check = false) {
+std::vector<Eigen::Vector2i> opticalFlow(const cv::Mat &prev_img, const cv::Mat& curr_img, const std::vector<cv::Point2f> &prev_pts, std::vector<cv::Point2f> &curr_pts, const cv::Mat& curr_mask, bool double_check = false) {
     int need_pts_num = 500;
     std::vector<Eigen::Vector2i> matches;
     
@@ -216,7 +217,7 @@ std::vector<Eigen::Vector2i> opticalFlow(const cv::Mat &prev_img, const cv::Mat&
         curr_pts = curr_pts2;
     }
 
-    cv::Mat mask = getVaildMask(curr_pts, cv::Mat::ones(curr_img.size(), CV_8UC1) * 255);
+    cv::Mat mask = getVaildMask(curr_pts, curr_mask);
     
     if (curr_pts.size() + 20 < need_pts_num) {
         std::vector<cv::Point2f> add_pts;
@@ -237,7 +238,7 @@ std::vector<Eigen::Vector2d> toEigen(const std::vector<cv::Point2f> &pts) {
     return eigen_pts;
 }
 
-cv::Mat preprocessImage(const cv::Mat &img) {
+void preprocessImage(const cv::Mat &img, cv::Mat &img_processed, cv::Mat &mask) {
     cv::Mat img_gray;
     if (img.channels() == 3) {
         cv::cvtColor(img, img_gray, cv::COLOR_BGR2GRAY);
@@ -245,21 +246,36 @@ cv::Mat preprocessImage(const cv::Mat &img) {
         img_gray = img.clone();
     }
     cv::Ptr<cv::CLAHE> clahe = cv::createCLAHE();
-    cv::Mat clahe_img;
-    clahe->apply(img_gray, clahe_img);
 
-    return clahe_img;
+    clahe->apply(img_gray, img_processed);
+
+    mask = cv::Mat::ones(img.size(), CV_8UC1) * 255;
+
+    // 遍历图像的每个像素点
+    for (int row = 0; row < img.rows; ++row) {
+        for (int col = 0; col < img.cols; ++col) {
+            // 获取当前像素点的RGB值
+            cv::Vec3b pixelColor = img.at<cv::Vec3b>(row, col);
+
+            // 如果当前像素点的RGB值与参考值不同，则将mask设为255
+            if (pixelColor(0) != pixelColor(1) || pixelColor(0) != pixelColor(2)) {
+                mask.at<uchar>(row, col) = 0;
+            }
+        }
+    }
+
+    cv::Mat kernel = cv::getStructuringElement(cv::MORPH_RECT, cv::Size(10, 10));
+    cv::erode(mask, mask, kernel);
 }
 
 SparseMap::Ptr flow_sparse_map;
 
 int main (int argc, char** argv) {
     Visualizer server(8088);
-
-    std::string img_dir = "../../../datasets/TXPJ/test1/sub";
+    std::string img_dir = "../../../datasets/TXPJ/test2/raw_data/img2_raw/";
     std::string img_format = "jpg";
-
-    auto ins_data = readCSV("../../../datasets/TXPJ/test1/ins1.csv");
+    
+    auto ins_data = readCSV("../../../datasets/TXPJ/test2/raw_data/ins2.csv");
 
     int scale = 4;
 
@@ -276,9 +292,13 @@ int main (int argc, char** argv) {
     SparseMap::Ptr sparse_map(new SparseMap(true));
 
     double lat0, lon0, alt0;
+    lon0 = 110.365814 * M_PI / 180;
+    lat0 = 35.304042 * M_PI / 180;
+    alt0 = 1466.190000;
     Frame::Ptr prev_flow_frame;
     cv::Mat prev_flow_img, curr_flow_img;
     std::vector<cv::Point2f> prev_flow_pts, curr_flow_pts;
+    std::ofstream out_file("../../../datasets/TXPJ/test2/raw_data/poses.txt");
     for (int i = 0; i < img_files.size(); i++) {
         std::cout << img_files[i] << std::endl;
 
@@ -290,31 +310,46 @@ int main (int argc, char** argv) {
         double pitch = ins[2] * M_PI / 180;
         double yaw = ins[3] * M_PI / 180;
         double roll = ins[4] * M_PI / 180;
-        double lat = ins[5] * M_PI / 180;
-        double lon = ins[6] * M_PI / 180;
+        double lat = ins[6] * M_PI / 180;
+        double lon = ins[5] * M_PI / 180;
         double alt = ins[7];
+
+     
 
         Eigen::Matrix3d R_nue2body = nueToBody(yaw, pitch, roll);
         Eigen::Matrix3d R_body2camera = bodyToCamera(qy, qz);
-        Eigen::Vector3d t_nue = llhToNUE(lat, lon, alt, lat0, lon0, alt0);
-        Eigen::Matrix3d R_nue = (R_body2camera * R_nue2body).transpose();
+        Eigen::Vector3d t_enu = llhToENU(lat, lon, alt, lat0, lon0, alt0);
+        Eigen::Matrix3d R_nue =R_nue2body * R_body2camera;
         Eigen::Matrix4d T_wc = Eigen::Matrix4d::Identity();
-        T_wc.block(0, 0, 3, 3) = R_nue;
-        T_wc.block(0, 3, 3, 1) = t_nue;
+
+        Eigen::Matrix3d R_enu_nue; 
+        R_enu_nue << 0, 0, 1,
+                     1, 0, 0,
+                     0, 1, 0;
+
+        T_wc.block(0, 0, 3, 3) = R_enu_nue * R_nue;
+        T_wc.block(0, 3, 3, 1) = t_enu;
         poses.push_back(T_wc.cast<float>());
 
+        std::cout << "t_enu: " << t_enu.transpose() << std::endl;
+
         // print
+        std::cout << "ins_size: " << ins.size() << std::endl;
         for (int i = 0; i < ins.size(); i++) {
             std::cout << ins[i] << " ";
         }
         std::cout << std::endl;
 
-        // init
-        if (i == 0) {
-            lat0 = lat;
-            lon0 = lon;
-            alt0 = alt;
+        out_file << basename << " ";
+        for (int i = 0; i < 3; i++) {
+            for (int j = 0; j < 3; j++) {
+                out_file << std::fixed << std::setprecision(6) << T_wc(i, j) << " ";
+            }
+            out_file << std::fixed << std::setprecision(6) << T_wc(i, 3) << " ";
         }
+        out_file << std::endl;
+
+        
 
         // optical flow
         Frame::Ptr frame(new Frame(frame_next_id++));
@@ -322,9 +357,10 @@ int main (int argc, char** argv) {
         curr_flow_img = cv::imread(img_files[i], cv::IMREAD_COLOR);
         cv::resize(curr_flow_img, curr_flow_img, cv::Size(curr_flow_img.cols / scale, curr_flow_img.rows / scale));
 
-        cv::Mat curr_flow_img_processed = preprocessImage(curr_flow_img);
+        cv::Mat curr_flow_img_processed, curr_mask;
+        preprocessImage(curr_flow_img, curr_flow_img_processed, curr_mask);
 
-        std::vector<Eigen::Vector2i> flow_matches = opticalFlow(prev_flow_img, curr_flow_img_processed, prev_flow_pts, curr_flow_pts);
+        std::vector<Eigen::Vector2i> flow_matches = opticalFlow(prev_flow_img, curr_flow_img_processed, prev_flow_pts, curr_flow_pts, curr_mask);
         
         // 计算光流的中位数
         if (flow_matches.size()) {
@@ -376,7 +412,7 @@ int main (int argc, char** argv) {
         cv::Mat timg3 = flow_sparse_map->drawFlow(frame->id_, 0);
         server.showImage("flow_image", frame->id_, timg3);
 
-        server.showPath("ins_path", frame->id_, poses, "NUE");
+        server.showPath("ins_path", frame->id_, poses, "ENU");
 
         std::cout << "frame id: " << frame->id_ << std::endl;
 
