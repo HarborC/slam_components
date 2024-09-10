@@ -133,15 +133,15 @@ std::map<std::string, std::vector<double>> readCSV(const std::string& filename) 
 
     file.close();
 
-    // print
-    for (auto it = ins_data.begin(); it != ins_data.end(); it++) {
-        std::cout << it->first << ": ";
-        for (int i = 0; i < it->second.size(); i++) {
-            std::cout << it->second[i] << " ";
-        }
-        std::cout << std::endl;
-    }
-    std::cout << "ins_data size: " << ins_data.size() << std::endl;
+    // // print
+    // for (auto it = ins_data.begin(); it != ins_data.end(); it++) {
+    //     std::cout << it->first << ": ";
+    //     for (int i = 0; i < it->second.size(); i++) {
+    //         std::cout << it->second[i] << " ";
+    //     }
+    //     std::cout << std::endl;
+    // }
+    // std::cout << "ins_data size: " << ins_data.size() << std::endl;
 
     return ins_data;
 }
@@ -238,6 +238,39 @@ std::vector<Eigen::Vector2d> toEigen(const std::vector<cv::Point2f> &pts) {
     return eigen_pts;
 }
 
+Eigen::Vector3d R2Omega(const Eigen::Matrix3d &R) {
+    Eigen::Vector3d euler;
+    euler(0) = -std::atan2(R(0, 2), R(2, 2));
+    euler(1) = std::asin(-R(1, 2));
+    euler(2) = std::atan2(R(1, 0), R(1, 1));
+    return euler;
+}
+
+Eigen::Matrix3d Omega2R(const Eigen::Vector3d &r) {
+    Eigen::Matrix3d R1;
+    R1 << cos(r(0)), 0, -sin(r(0)),
+          0, 1, 0,
+          sin(r(0)), 0, cos(r(0));
+
+    Eigen::Matrix3d R2;
+    R2 << 1, 0, 0,
+          0, cos(r(1)), -sin(r(1)),
+          0, sin(r(1)), cos(r(1));
+
+    Eigen::Matrix3d R3;
+    R3 << cos(r(2)), -sin(r(2)), 0,
+          sin(r(2)), cos(r(2)), 0,
+          0, 0, 1;
+
+    return R1 * R2 * R3;
+}
+
+Eigen::Matrix3d RNormalized(const Eigen::Matrix3d &R) {
+    Eigen::Quaterniond q(R);
+    Eigen::Matrix3d R_normalized = q.normalized().toRotationMatrix();
+    return R_normalized;
+}
+
 void preprocessImage(const cv::Mat &img, cv::Mat &img_processed, cv::Mat &mask) {
     cv::Mat img_gray;
     if (img.channels() == 3) {
@@ -251,13 +284,9 @@ void preprocessImage(const cv::Mat &img, cv::Mat &img_processed, cv::Mat &mask) 
 
     mask = cv::Mat::ones(img.size(), CV_8UC1) * 255;
 
-    // 遍历图像的每个像素点
     for (int row = 0; row < img.rows; ++row) {
         for (int col = 0; col < img.cols; ++col) {
-            // 获取当前像素点的RGB值
             cv::Vec3b pixelColor = img.at<cv::Vec3b>(row, col);
-
-            // 如果当前像素点的RGB值与参考值不同，则将mask设为255
             if (pixelColor(0) != pixelColor(1) || pixelColor(0) != pixelColor(2)) {
                 mask.at<uchar>(row, col) = 0;
             }
@@ -267,8 +296,6 @@ void preprocessImage(const cv::Mat &img, cv::Mat &img_processed, cv::Mat &mask) 
     cv::Mat kernel = cv::getStructuringElement(cv::MORPH_RECT, cv::Size(10, 10));
     cv::erode(mask, mask, kernel);
 }
-
-SparseMap::Ptr flow_sparse_map;
 
 int main (int argc, char** argv) {
     Visualizer server(8088);
@@ -288,18 +315,20 @@ int main (int argc, char** argv) {
 
     std::vector<Eigen::Matrix4f> poses;
 
-    flow_sparse_map.reset(new SparseMap(true));
+    SparseMap::Ptr flow_sparse_map(new SparseMap(true));
     SparseMap::Ptr sparse_map(new SparseMap(true));
 
     double lat0, lon0, alt0;
     lon0 = 110.365814 * M_PI / 180;
     lat0 = 35.304042 * M_PI / 180;
-    alt0 = 1466.190000;
+    alt0 = 0;
     Frame::Ptr prev_flow_frame;
     cv::Mat prev_flow_img, curr_flow_img;
     std::vector<cv::Point2f> prev_flow_pts, curr_flow_pts;
+    FrameIDType last_kf_id;
     std::ofstream out_file("../../../datasets/TXPJ/test2/raw_data/poses.txt");
     for (int i = 0; i < img_files.size(); i++) {
+        std::cout << sparse_map->frame_map_.size() << std::endl;
         std::cout << img_files[i] << std::endl;
 
         // read ins data
@@ -314,8 +343,6 @@ int main (int argc, char** argv) {
         double lon = ins[5] * M_PI / 180;
         double alt = ins[7];
 
-     
-
         Eigen::Matrix3d R_nue2body = nueToBody(yaw, pitch, roll);
         Eigen::Matrix3d R_body2camera = bodyToCamera(qy, qz);
         Eigen::Vector3d t_enu = llhToENU(lat, lon, alt, lat0, lon0, alt0);
@@ -327,33 +354,32 @@ int main (int argc, char** argv) {
                      1, 0, 0,
                      0, 1, 0;
 
-        T_wc.block(0, 0, 3, 3) = R_enu_nue * R_nue;
-        T_wc.block(0, 3, 3, 1) = t_enu;
-        poses.push_back(T_wc.cast<float>());
+        Eigen::Matrix3d R_2;
+        R_2 << -1, 0, 0,
+               0, 1, 0,
+               0, 0, -1; 
 
-        std::cout << "t_enu: " << t_enu.transpose() << std::endl;
+        T_wc.block(0, 0, 3, 3) = RNormalized(R_enu_nue * R_nue * R_2);
+        T_wc.block(0, 3, 3, 1) = t_enu;
 
         // print
-        std::cout << "ins_size: " << ins.size() << std::endl;
+        std::cout << "ins_data: ";
         for (int i = 0; i < ins.size(); i++) {
             std::cout << ins[i] << " ";
         }
         std::cout << std::endl;
 
         out_file << basename << " ";
-        for (int i = 0; i < 3; i++) {
-            for (int j = 0; j < 3; j++) {
-                out_file << std::fixed << std::setprecision(6) << T_wc(i, j) << " ";
-            }
-            out_file << std::fixed << std::setprecision(6) << T_wc(i, 3) << " ";
-        }
+        Eigen::Vector3d euler = R2Omega(T_wc.block(0, 0, 3, 3));
+
+        out_file << std::fixed << std::setprecision(6) << euler(0) << " " << euler(1) << " " << euler(2) << " ";
+        out_file << std::fixed << std::setprecision(6) << T_wc(0, 3) << " " << T_wc(1, 3) << " " << T_wc(2, 3) << " ";
         out_file << std::endl;
 
-        
-
         // optical flow
-        Frame::Ptr frame(new Frame(frame_next_id++));
-        frame->Twb_ = T_wc;
+        Frame::Ptr frame(new Frame(flow_sparse_map->frame_next_id++));
+        frame->setBodyPose(T_wc);
+        frame->Twb_prior_ = T_wc;
         curr_flow_img = cv::imread(img_files[i], cv::IMREAD_COLOR);
         cv::resize(curr_flow_img, curr_flow_img, cv::Size(curr_flow_img.cols / scale, curr_flow_img.rows / scale));
 
@@ -377,7 +403,6 @@ int main (int argc, char** argv) {
             bool is_max_flow = median_flow_distance > 10;
         }
         
-        
         std::vector<Eigen::Vector3d> flow_bearings;
         for (int j = 0; j < curr_flow_pts.size(); j++) {
             Eigen::Vector3d bearing;
@@ -385,10 +410,14 @@ int main (int argc, char** argv) {
             flow_bearings.push_back(bearing);
         }
 
+        std::cout << sparse_map->frame_map_.size() << std::endl;
+
         frame->addData({curr_flow_img}, {toEigen(curr_flow_pts)}, {flow_bearings});
         flow_sparse_map->addKeyFrame(frame);
         if (flow_matches.size() > 0)
             flow_sparse_map->addIntraMatches(prev_flow_frame->id_, frame->id_, {flow_matches});
+
+        std::cout << sparse_map->frame_map_.size() << std::endl;
 
         {
             prev_flow_frame = frame;
@@ -396,59 +425,98 @@ int main (int argc, char** argv) {
             prev_flow_pts = curr_flow_pts;
         }
 
-
-
         // pick keyframe
+        if (i > 0) {
+            std::vector<std::pair<size_t, size_t>> matches = flow_sparse_map->getMatches(last_kf_id, 0, frame->id_, 0);
+            double kf_num1 = flow_sparse_map->getKeypointSize(last_kf_id, 0);
+            double kf_num2 = flow_sparse_map->getKeypointSize(frame->id_, 0);
+            double ratio1 = matches.size() / kf_num1;
+            double ratio2 = matches.size() / kf_num2;
 
+            double TH_ratio = 0.5;
+            if (ratio1 < TH_ratio || ratio2 < TH_ratio) {
+                std::cout << std::fixed << "keyframe: " << frame->id_ << " ratio1: " << ratio1 << " ratio2: " << ratio2 << std::endl;              
+            } else {
+                continue;
+            }
+        }
 
-        // BA
+        last_kf_id = frame->id_;
+
+        poses.push_back(T_wc.cast<float>());
+
+        Frame::Ptr new_frame(new Frame(sparse_map->frame_next_id++));
+        new_frame->setBodyPose(T_wc);
+        new_frame->Twb_prior_ = T_wc;
+        new_frame->extractFeature(frame->imgs_, "ORB");
+        new_frame->bearings_[0].resize(new_frame->keypoints_[0].size());
+        for (int j = 0; j < new_frame->keypoints_[0].size(); j++) {
+            Eigen::Vector2d kp = new_frame->keypoints_[0][j];
+            Eigen::Vector3d bearing;
+            bearing << (kp.x() - cx) / f, (kp.y() - cy) / f, 1;
+            new_frame->bearings_[0][j] = bearing;
+        }
+
+        if (sparse_map->last_frame_) {
+            const cv::Mat &descriptors1 = sparse_map->last_frame_->descriptors_[0];
+            const cv::Mat &descriptors2 = new_frame->descriptors_[0];
+            std::vector<cv::DMatch> matches;
+            Matcher matcher;
+            matcher.matchORB(descriptors1, descriptors2, matches);
+            std::cout << "matches size: " << matches.size() << std::endl;
+
+            std::vector<Eigen::Vector2i> intra_matches_0;
+            for (int i = 0; i < matches.size(); i++) {
+                Eigen::Vector2i match(matches[i].queryIdx, matches[i].trainIdx);
+                intra_matches_0.push_back(match);
+            }
+            
+            std::vector<std::vector<Eigen::Vector2i>> intra_matches;
+            intra_matches.push_back(intra_matches_0);
+            auto prev_kf_id = sparse_map->last_frame_->id_;
+            sparse_map->addKeyFrame(new_frame);
+
+            std::cout << sparse_map->frame_map_.size() << std::endl;
+
+            sparse_map->addIntraMatches(prev_kf_id, new_frame->id_, intra_matches);
+
+            // cv::Mat timg5 = sparse_map->drawMatches(new_frame->id_, 0, new_frame->id_-1, 0);
+            // cv::imwrite("/mnt/g/projects/slam/tmp/test/matches_" + std::to_string(frame->id_) + "_" + std::to_string(frame->id_-1) + ".png", timg5);
+
+            sparse_map->triangulate();
+            sparse_map->bundleAdjustment(f, f, cx, cy);
+        } else {
+            std::cout << sparse_map->frame_map_.size() << std::endl;
+            sparse_map->addKeyFrame(new_frame);
+            std::cout << sparse_map->frame_map_.size() << std::endl;
+
+        }
+
+        std::cout << "ppppppppp" << sparse_map->frame_map_.size() << std::endl;
 
         cv::Mat timg = frame->drawKeyPoint(0);
         server.showImage("image", frame->id_, timg);
 
-        // cv::Mat timg2 = sparse_map->drawMatchedKeypoint(frame->id_, 0);
-        // server.showImage("match_image", frame->id_, timg2);
-
         cv::Mat timg3 = flow_sparse_map->drawFlow(frame->id_, 0);
         server.showImage("flow_image", frame->id_, timg3);
 
+        cv::Mat timg4 = sparse_map->drawFlow(new_frame->id_, 0, new_frame->id_-1);
+        server.showImage("flow_image2", new_frame->id_, timg4);
+
+        std::cout << sparse_map->frame_map_.size() << std::endl;
+        std::vector<Eigen::Vector3d> world_points = sparse_map->getWorldPoints();
+        std::cout << sparse_map->frame_map_.size() << std::endl;
+
+        std::vector<std::vector<float>> world_points_f;
+        for (int i = 0; i < world_points.size(); i++) {
+            std::vector<float> pt = {world_points[i].x(), world_points[i].y(), world_points[i].z()};
+            world_points_f.push_back(pt);
+        }
+
+        server.showPointCloud("world_points", new_frame->id_, world_points_f, {}, "ENU");
+
         server.showPath("ins_path", frame->id_, poses, "ENU");
-
-        std::cout << "frame id: " << frame->id_ << std::endl;
-
     }
-  
+
     return 0;
 }
-
-// frame->extractFeature(imgs, "ORB");
-// frame->bearings_[0].resize(frame->keypoints_[0].size());
-// for (int j = 0; j < frame->keypoints_[0].size(); j++) {
-//     Eigen::Vector2d kp = frame->keypoints_[0][j];
-//     Eigen::Vector3d bearing;
-//     bearing << (kp.x() - cx) / f, (kp.y() - cy) / f, 1;
-//     frame->bearings_[0][j] = bearing;
-// }
-
-// 判断关键帧
-
-
-// if (last_frame) {
-//     const cv::Mat &descriptors1 = last_frame->descriptors_[0];
-//     const cv::Mat &descriptors2 = frame->descriptors_[0];
-//     std::vector<cv::DMatch> matches;
-//     Matcher matcher;
-//     matcher.matchORB(descriptors1, descriptors2, matches);
-
-//     std::vector<Eigen::Vector2i> intra_matches_0;
-//     for (int i = 0; i < matches.size(); i++) {
-//         Eigen::Vector2i match(matches[i].queryIdx, matches[i].trainIdx);
-//         intra_matches_0.push_back(match);
-//     }
-    
-//     std::vector<std::vector<Eigen::Vector2i>> intra_matches;
-//     intra_matches.push_back(intra_matches_0);
-//     sparse_map->addIntraMatches(last_frame->id_, frame->id_, intra_matches);
-// }
-
-// last_frame = frame;

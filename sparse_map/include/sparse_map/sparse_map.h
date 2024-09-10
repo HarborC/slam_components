@@ -28,7 +28,7 @@ public:
                    const std::vector<std::vector<Eigen::Vector3d>> &bearings,
                    const std::vector<cv::Mat> &descriptors = {});
 
-  void addKeyFrame(const Frame::Ptr& frame) ;
+  void addKeyFrame(const Frame::Ptr &frame);
 
   void removeKeyFrame(const FrameIDType &id);
 
@@ -44,6 +44,15 @@ public:
 
   void triangulate();
 
+  bool bundleAdjustment(const double& fx, const double& fy, const double& cx, const double& cy);
+
+  std::vector<std::pair<size_t, size_t>> getMatches(const FrameIDType &f_id1,
+                                                    const int &c_id1,
+                                                    const FrameIDType &f_id2,
+                                                    const int &c_id2);
+
+  size_t getKeypointSize(const FrameIDType &f_id1, const int &c_id1);
+
 public:
   // debug output
   cv::Mat drawKeypoint(FrameIDType frame_id, int cam_id);
@@ -53,7 +62,7 @@ public:
   cv::Mat drawMatches(FrameIDType frame_id0, int cam_id0, FrameIDType frame_id1,
                       int cam_id1);
 
-  cv::Mat drawFlow(FrameIDType frame_id, int cam_id);
+  cv::Mat drawFlow(FrameIDType frame_id, int cam_id, FrameIDType last_frame_id = -1);
 
   cv::Mat drawStereoKeyPoint(FrameIDType frame_id);
 
@@ -67,9 +76,13 @@ protected:
   void updateFeatureMap();
 
 public:
+  FeatureIDType feature_next_id = 0;
+  FrameIDType frame_next_id = 0;
+  Frame::Ptr last_frame_ = nullptr;
   FeatureMap feature_map_;
   FrameMap frame_map_;
   bool use_ransac_ = true;
   int cam_num_ = 1;
-  std::vector<Eigen::Matrix4d> calibrations_ = {Eigen::Matrix4d::Identity()}; // Tbc
+  std::vector<Eigen::Matrix4d> calibrations_ = {
+      Eigen::Matrix4d::Identity()}; // Tbc
 };
