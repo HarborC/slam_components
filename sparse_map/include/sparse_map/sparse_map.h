@@ -43,6 +43,7 @@ public:
   void updateKeyFramePose(const FrameIDType &id, const Eigen::Matrix4d &pose);
 
   void triangulate();
+  void triangulate2();
 
   bool bundleAdjustment(const double &fx, const double &fy, const double &cx,
                         const double &cy, bool use_prior = false);

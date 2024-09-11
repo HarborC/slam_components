@@ -258,6 +258,70 @@ void SparseMap::triangulate() {
   }
 }
 
+void SparseMap::triangulate2() {
+  for (auto it = feature_map_.begin(); it != feature_map_.end(); ++it) {
+    Feature::Ptr feature = it->second;
+    if (feature->inv_depth_ > 0)
+      continue;
+
+    if (feature->observationSize() < 2)
+      continue;
+
+    std::vector<Eigen::Vector3d> bearings;
+    std::vector<Eigen::Matrix4d> Tcws;
+
+    for (auto obs : feature->observations_) {
+      FrameIDType frame_id = obs.first;
+      Frame::Ptr frame = frame_map_[frame_id];
+      for (auto cam_obs : obs.second) {
+        int cam_id = cam_obs.first;
+        int pt_id = cam_obs.second;
+        bearings.push_back(frame->bearings_[cam_id][pt_id].normalized());
+        Tcws.push_back(frame->Tcw_[cam_id]);
+      }
+    }
+
+    Eigen::Matrix4d Twc = Tcws[0].inverse();
+    Eigen::Vector3d twc = Twc.block<3, 1>(0, 3);
+    Eigen::Vector3d bearing0 = Twc.block<3, 3>(0, 0) * bearings[0];
+    double fi = - twc(2) / bearing0(2);
+    double x = twc(0) + fi * bearing0(0);
+    double y = twc(1) + fi * bearing0(1);
+    Eigen::Vector3d world_point(x, y, 0);
+
+    feature->world_point_ = world_point;
+    Frame::Ptr ref_frame = frame_map_[feature->ref_frame_id_];
+    int ref_cam_id = feature->ref_cam_id_;
+    Eigen::Matrix4d Tcw = ref_frame->Tcw_[ref_cam_id];
+    Eigen::Vector3d camera_point =
+        Tcw.block<3, 3>(0, 0) * feature->world_point_ + Tcw.block<3, 1>(0, 3);
+
+    // double f = 8350.0;
+    // double cx = 512;
+    // double cy = 384;
+
+    // for (int i = 0; i < bearings.size(); i++) {
+    //   Eigen::Vector3d camera_point =
+    //       Tcws[i].block<3, 3>(0, 0) * feature->world_point_ +
+    //       Tcws[i].block<3, 1>(0, 3);
+    //   Eigen::Vector2d reproj_pt =
+    //       Eigen::Vector2d(f * camera_point.x() / camera_point.z() + cx,
+    //                       f * camera_point.y() / camera_point.z() + cy);
+    //   Eigen::Vector2d obs_pt = Eigen::Vector2d(f * bearings[i].x() / bearings[i].z() + cx,
+    //                                            f * bearings[i].y() / bearings[i].z() + cy);
+    //   Eigen::Vector2d error = reproj_pt - obs_pt;
+    //   std::cout << error.transpose() << " ";
+    // }
+    // std::cout << std::endl;
+
+    if (camera_point.z() < 0) {
+      feature->inv_depth_ = 1.0 / DEFAULT_DEPTH;
+    } else {
+      feature->inv_depth_ = 1.0 / camera_point.z();
+    }
+  }
+}
+
 std::vector<Eigen::Vector3d> SparseMap::getWorldPoints() {
   std::vector<Eigen::Vector3d> world_points;
   for (auto it = feature_map_.begin(); it != feature_map_.end(); ++it) {
@@ -576,11 +640,12 @@ bool SparseMap::bundleAdjustment(const double &fx, const double &fy,
       problem.AddResidualBlock(cost_function, NULL, frame->twb_.data(),
                               frame->pose_q);
     }
-  } else {
-    Frame::Ptr first_frame = frame_map_.begin()->second;
-    problem.SetParameterBlockConstant(first_frame->pose_q);
-    problem.SetParameterBlockConstant(first_frame->twb_.data());
-  }
+  } 
+  // else {
+  //   Frame::Ptr first_frame = frame_map_.begin()->second;
+  //   problem.SetParameterBlockConstant(first_frame->pose_q);
+  //   problem.SetParameterBlockConstant(first_frame->twb_.data());
+  // }
 
   std::cout << "pppp2" << std::endl;
 
@@ -596,7 +661,7 @@ bool SparseMap::bundleAdjustment(const double &fx, const double &fy,
         if (feature->inv_depth_ < 0)
           continue;
 
-        problem.AddParameterBlock(feature->world_point_.data(), 3);
+        problem.AddParameterBlock(feature->world_point_.data(), 2);
 
         ceres::CostFunction *cost_function = PinholeReprojError::Create(
             frame->keypoints_[cam_id][pt_id], fx, fy, cx, cy);
@@ -631,7 +696,7 @@ bool SparseMap::bundleAdjustment(const double &fx, const double &fy,
             .toRotationMatrix();
     Twb.block<3, 1>(0, 3) = frame->twb_;
     frame->setBodyPose(Twb);
-    
+    frame->Tcw_[0] = Twb.inverse();
   }
 
   std::cout << "pppp5" << std::endl;

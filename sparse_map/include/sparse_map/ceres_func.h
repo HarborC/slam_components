@@ -19,7 +19,7 @@ struct PinholeReprojError {
     Vector3T t_wc(twc[0], twc[1], twc[2]);
     QuatT q_wc(qwc[3], qwc[0], qwc[1], qwc[2]);
 
-    Vector3T p_w(pw[0], pw[1], pw[2]);
+    Vector3T p_w(pw[0], pw[1], T(0));
 
     Vector3T p_c = q_wc.inverse() * (p_w - t_wc);
 
@@ -37,7 +37,7 @@ struct PinholeReprojError {
   static ceres::CostFunction *Create(const Eigen::Vector2d &_pt,
                                      const double &_fx, const double &_fy,
                                      const double &_cx, const double &_cy) {
-    return (new ceres::AutoDiffCostFunction<PinholeReprojError, 2, 3, 4, 3>(
+    return (new ceres::AutoDiffCostFunction<PinholeReprojError, 2, 3, 4, 2>(
         new PinholeReprojError(_pt, _fx, _fy, _cx, _cy)));
   }
 
