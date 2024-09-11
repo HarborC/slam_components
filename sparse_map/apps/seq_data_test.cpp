@@ -373,11 +373,11 @@ bool solveFrameByPnP(const std::vector<std::pair<Eigen::Vector3d, Eigen::Vector3
 
 int main (int argc, char** argv) {
     Visualizer server(8088);
-    // std::string img_dir = "../../../datasets/TXPJ/test2/raw_data/img2_raw/";
-    // auto ins_data = readCSV("../../../datasets/TXPJ/test2/raw_data/ins2.csv");
+    std::string img_dir = "../../../datasets/TXPJ/test2/raw_data/img2_raw/";
+    auto ins_data = readCSV("../../../datasets/TXPJ/test2/raw_data/ins2.csv");
 
-    std::string img_dir = "../../../datasets/TXPJ/test1/img1/";
-    auto ins_data = readCSV("../../../datasets/TXPJ/test1/ins1.csv");
+    // std::string img_dir = "../../../datasets/TXPJ/test1/img1/";
+    // auto ins_data = readCSV("../../../datasets/TXPJ/test1/ins1.csv");
 
     int scale = 4;
 
@@ -590,29 +590,59 @@ int main (int argc, char** argv) {
         kf_id_and_name[new_frame->id_] = basename;
     }
 
-    // std::ofstream out_file("../../../datasets/TXPJ/test2/extract/poses.txt");
-    // std::string save_dir = "../../../datasets/TXPJ/test2/extract/imgs/";
-    // for (auto it = kf_id_and_name.begin(); it != kf_id_and_name.end(); it++) {
-    //     std::string basename = it->second;
-    //     Frame::Ptr new_frame = sparse_map->getFrame(it->first);
-    //     Eigen::Matrix4d T_wc_new = new_frame->getBodyPose();
+    std::ofstream out_file("../../../datasets/TXPJ/test2/extract/poses.txt");
+    std::string save_dir = "../../../datasets/TXPJ/test2/extract/imgs/";
+    for (auto it = kf_id_and_name.begin(); it != kf_id_and_name.end(); it++) {
+        std::string basename = it->second;
+        Frame::Ptr new_frame = sparse_map->getFrame(it->first);
+        Eigen::Matrix4d T_wc_new = new_frame->getBodyPose();
 
-    //     Eigen::Matrix3d R_3;
-    //     R_3 << 1, 0, 0,
-    //            0, -1, 0,
-    //            0, 0, -1; 
+        Eigen::Matrix3d R_3;
+        R_3 << 1, 0, 0,
+               0, -1, 0,
+               0, 0, -1; 
 
-    //     Eigen::Vector3d euler = R2Omega(T_wc_new.block(0, 0, 3, 3) * R_3);
+        Eigen::Vector3d euler = R2Omega(T_wc_new.block(0, 0, 3, 3) * R_3);
 
-    //     out_file << basename << " ";
-    //     out_file << std::fixed << std::setprecision(6) << euler(0) << " " << euler(1) << " " << euler(2) << " ";
-    //     out_file << std::fixed << std::setprecision(6) << T_wc_new(0, 3) << " " << T_wc_new(1, 3) << " " << T_wc_new(2, 3) << " ";
-    //     out_file << std::endl;
+        out_file << basename << " ";
+        out_file << std::fixed << std::setprecision(6) << euler(0) << " " << euler(1) << " " << euler(2) << " ";
+        out_file << std::fixed << std::setprecision(6) << T_wc_new(0, 3) << " " << T_wc_new(1, 3) << " " << T_wc_new(2, 3) << " ";
+        out_file << std::endl;
 
-    //     std::string img_path = img_dir + "/" + basename;
-    //     cv::Mat img = cv::imread(img_path, cv::IMREAD_COLOR);
-    //     cv::imwrite(save_dir + "/" + basename, img);
-    // }
+        std::string img_path = img_dir + "/" + basename;
+        cv::Mat img = cv::imread(img_path, cv::IMREAD_COLOR);
+        cv::imwrite(save_dir + "/" + basename, img);
+
+        cv::Mat timg1 = sparse_map->drawReprojKeyPoint(new_frame->id_, 0, f, f, cx, cy);
+        cv::imwrite("../../../datasets/TXPJ/test2/extract/imgs_reproj/" + std::to_string(new_frame->id_) + ".png", timg1);
+    }
+    out_file.close();
+
+    std::ofstream out_file2("../../../datasets/TXPJ/test2/extract/points.txt");
+    out_file2 << "# (id x y z): (img_name, pt_x, pt_y) ...\n";
+    for (auto it = sparse_map->feature_map_.begin(); it != sparse_map->feature_map_.end(); ++it) {
+        Feature::Ptr feature = it->second;
+        if (feature->inv_depth_ < 0)
+            continue;
+
+        if (feature->observationSize() < 2)
+            continue;
+
+        out_file2 << feature->id_ << " " << feature->world_point_.transpose() << ": ";
+
+        for (auto obs : feature->observations_) {
+            FrameIDType frame_id = obs.first;
+            Frame::Ptr frame = sparse_map->frame_map_[frame_id];
+            for (auto cam_obs : obs.second) {
+                int cam_id = cam_obs.first;
+                int pt_id = cam_obs.second;
+                out_file2 << "(" << kf_id_and_name[frame_id] << " " << frame->keypoints_[cam_id][pt_id].transpose() * scale << ") ";
+            }
+        }
+
+        out_file2 << std::endl;
+    }
+    out_file2.close();
 
     return 0;
 }
