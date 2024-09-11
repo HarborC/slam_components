@@ -60,7 +60,6 @@ void Frame::extractFeature(const std::vector<cv::Mat> &_imgs,
   }
 }
 
-
 cv::Mat Frame::drawKeyPoint(const int &cam_id) {
   cv::Mat img = imgs_[cam_id].clone();
   if (img.channels() == 1) {

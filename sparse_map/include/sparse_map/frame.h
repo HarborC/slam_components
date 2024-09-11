@@ -45,6 +45,8 @@ public:
 
   cv::Mat drawMatchedKeyPoint(const int &cam_id);
 
+  cv::Mat drawReprojKeyPoint(const int &cam_id);
+
 public: // frame id
   FrameIDType id_;
   int cam_num_;
@@ -60,4 +62,4 @@ public: // frame id
   std::vector<cv::Mat> descriptors_;
   std::vector<std::vector<FeatureIDType>> feature_ids_;
 };
-typedef std::unordered_map<FrameIDType, Frame::Ptr> FrameMap;
+typedef std::map<FrameIDType, Frame::Ptr> FrameMap;

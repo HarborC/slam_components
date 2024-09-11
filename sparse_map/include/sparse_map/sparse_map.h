@@ -44,14 +44,24 @@ public:
 
   void triangulate();
 
-  bool bundleAdjustment(const double& fx, const double& fy, const double& cx, const double& cy);
+  bool bundleAdjustment(const double &fx, const double &fy, const double &cx,
+                        const double &cy, bool use_prior = false);
 
   std::vector<std::pair<size_t, size_t>> getMatches(const FrameIDType &f_id1,
                                                     const int &c_id1,
                                                     const FrameIDType &f_id2,
                                                     const int &c_id2);
 
+  std::vector<std::pair<Eigen::Vector3d, Eigen::Vector3d>>
+  getCorrespondences2D2D(const FrameIDType &f_id1, const int &c_id1,
+                         const FrameIDType &f_id2, const int &c_id2);
+
+  std::vector<std::pair<Eigen::Vector3d, Eigen::Vector3d>>
+  getCorrespondences2D3D(const FrameIDType &f_id1, const int &c_id1);
+
   size_t getKeypointSize(const FrameIDType &f_id1, const int &c_id1);
+
+  Frame::Ptr getFrame(const FrameIDType &id) { return frame_map_[id]; }
 
 public:
   // debug output
@@ -62,11 +72,16 @@ public:
   cv::Mat drawMatches(FrameIDType frame_id0, int cam_id0, FrameIDType frame_id1,
                       int cam_id1);
 
-  cv::Mat drawFlow(FrameIDType frame_id, int cam_id, FrameIDType last_frame_id = -1);
+  cv::Mat drawFlow(FrameIDType frame_id, int cam_id,
+                   FrameIDType last_frame_id = -1);
 
   cv::Mat drawStereoKeyPoint(FrameIDType frame_id);
 
   std::vector<Eigen::Vector3d> getWorldPoints();
+
+  void printReprojError(const FrameIDType &f_id1, const int &c_id1, const double &fx, const double &fy, const double &cx, const double &cy);
+
+  cv::Mat drawReprojKeyPoint(FrameIDType frame_id, int cam_id, const double &fx, const double &fy, const double &cx, const double &cy);
 
 protected:
   void ransacWithF(const FrameIDType &left_frame_id, const int &left_cam_id,
