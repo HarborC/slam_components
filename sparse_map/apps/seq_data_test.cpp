@@ -373,10 +373,11 @@ bool solveFrameByPnP(const std::vector<std::pair<Eigen::Vector3d, Eigen::Vector3
 
 int main (int argc, char** argv) {
     Visualizer server(8088);
-    std::string img_dir = "../../../datasets/TXPJ/test2/raw_data/img2_raw/";
-    std::string img_format = "jpg";
-    
-    auto ins_data = readCSV("../../../datasets/TXPJ/test2/raw_data/ins2.csv");
+    // std::string img_dir = "../../../datasets/TXPJ/test2/raw_data/img2_raw/";
+    // auto ins_data = readCSV("../../../datasets/TXPJ/test2/raw_data/ins2.csv");
+
+    std::string img_dir = "../../../datasets/TXPJ/test1/img1/";
+    auto ins_data = readCSV("../../../datasets/TXPJ/test1/ins1.csv");
 
     int scale = 4;
 
@@ -407,7 +408,6 @@ int main (int argc, char** argv) {
     std::map<FrameIDType, std::string> kf_id_and_name;
 
     for (int i = 0; i < img_files.size(); i++) {
-        std::cout << sparse_map->frame_map_.size() << std::endl;
         std::cout << img_files[i] << std::endl;
 
         // read ins data
@@ -434,9 +434,6 @@ int main (int argc, char** argv) {
                      0, 1, 0;
 
         Eigen::Matrix3d R_2;
-        // R_2 << -1, 0, 0,
-        //        0, 1, 0,
-        //        0, 0, -1; 
         R_2 << -1, 0, 0,
                0, -1, 0,
                0, 0, 1; 
@@ -451,8 +448,6 @@ int main (int argc, char** argv) {
         }
         std::cout << std::endl;
 
-        
-
         // optical flow
         Frame::Ptr frame(new Frame(flow_sparse_map->frame_next_id++));
         curr_flow_img = cv::imread(img_files[i], cv::IMREAD_COLOR);
@@ -463,21 +458,6 @@ int main (int argc, char** argv) {
 
         std::vector<Eigen::Vector2i> flow_matches = opticalFlow(prev_flow_img, curr_flow_img_processed, prev_flow_pts, curr_flow_pts, curr_mask);
         
-        // 计算光流的中位数
-        if (flow_matches.size()) {
-            std::vector<double> flow_distances;
-            for (int j = 0; j < flow_matches.size(); j++) {
-                cv::Point2f p1 = prev_flow_pts[flow_matches[j].x()];
-                cv::Point2f p2 = curr_flow_pts[flow_matches[j].y()];
-                flow_distances.push_back(distance(p1, p2));
-            }
-            std::sort(flow_distances.begin(), flow_distances.end());
-            double median_flow_distance = flow_distances[flow_distances.size() / 2];
-            std::cout << "median flow distance: " << median_flow_distance << std::endl;
-
-            bool is_max_flow = median_flow_distance > 10;
-        }
-        
         std::vector<Eigen::Vector3d> flow_bearings;
         for (int j = 0; j < curr_flow_pts.size(); j++) {
             Eigen::Vector3d bearing;
@@ -485,14 +465,11 @@ int main (int argc, char** argv) {
             flow_bearings.push_back(bearing);
         }
 
-        std::cout << sparse_map->frame_map_.size() << std::endl;
-
         frame->addData({curr_flow_img}, {toEigen(curr_flow_pts)}, {flow_bearings});
         flow_sparse_map->addKeyFrame(frame);
         if (flow_matches.size() > 0)
             flow_sparse_map->addIntraMatches(prev_flow_frame->id_, frame->id_, {flow_matches});
 
-        std::cout << sparse_map->frame_map_.size() << std::endl;
 
         {
             prev_flow_frame = frame;
@@ -522,7 +499,7 @@ int main (int argc, char** argv) {
 
         Frame::Ptr new_frame(new Frame(sparse_map->frame_next_id++));
         new_frame->Twb_prior_ = T_wc;
-        new_frame->extractFeature(frame->imgs_, "ORB");
+        new_frame->extractFeature({curr_flow_img}, "ORB", {curr_mask});
         new_frame->bearings_[0].resize(new_frame->keypoints_[0].size());
         for (int j = 0; j < new_frame->keypoints_[0].size(); j++) {
             Eigen::Vector2d kp = new_frame->keypoints_[0][j];
@@ -561,76 +538,12 @@ int main (int argc, char** argv) {
             Frame::Ptr prev_frame = sparse_map->getFrame(prev_kf_id);
             sparse_map->addKeyFrame(new_frame);
 
-            std::cout << sparse_map->frame_map_.size() << std::endl;
-
             sparse_map->addIntraMatches(prev_kf_id, new_frame->id_, intra_matches);
 
             cv::Mat timg5 = sparse_map->drawMatches(new_frame->id_, 0, new_frame->id_-1, 0);
             cv::imwrite("../../../tmp/test/matches_" + std::to_string(new_frame->id_) + "_" + std::to_string(new_frame->id_-1) + ".png", timg5);
 
-            // if (!is_init) {
-            //     Eigen::Matrix3d Rotation;
-            //     Eigen::Vector3d Translation;
-            //     bool success = solveRelativeRT(sparse_map->getCorrespondences2D2D(prev_kf_id, 0, new_frame->id_, 0), Rotation, Translation);
-
-            //     Eigen::Matrix4d prev_T = prev_frame->getBodyPose();
-
-            //     Eigen::Matrix4d T = Eigen::Matrix4d::Identity();
-            //     T.block(0, 0, 3, 3) = Rotation;
-            //     T.block(0, 3, 3, 1) = Translation;
-            //     Eigen::Matrix4d curr_T = prev_T * T;
-
-            //     new_frame->setBodyPose(curr_T);
-            //     new_frame->Tcw_[0] = curr_T.inverse();
-
-            //     // std::cout << "1:\n" << new_frame->getBodyPose() << std::endl;
-            //     // std::cout << "2:\n" << prev_frame->Twb_prior_.inverse() * new_frame->Twb_prior_ << std::endl;
-
-            //     // std::exit(0);
-
-            //     // if (!success) {
-            //     //     std::cout << "solve relative RT failed" << std::endl;
-            //     //     std::exit(0);
-            //     // } else {
-            //     //     std::cout << "solve relative RT success" << std::endl;
-            //     //     std::exit(0);
-            //     // }
-
-            //     is_init = true;
-            // } else {
-            //     Eigen::Matrix3d Rotation;
-            //     Eigen::Vector3d Translation;
-            //     bool success = solveFrameByPnP(sparse_map->getCorrespondences2D3D(new_frame->id_, 0), Rotation, Translation);
-
-            //     if (!success) {
-            //         std::cout << "solve Frame By PnP failed" << std::endl;
-            //         std::exit(0);
-            //         new_frame->setBodyPose(prev_frame->getBodyPose());
-            //         new_frame->Tcw_[0] = prev_frame->getBodyPose().inverse();
-            //     } else {
-            //         Eigen::Matrix4d T = Eigen::Matrix4d::Identity();
-            //         T.block(0, 0, 3, 3) = Rotation;
-            //         T.block(0, 3, 3, 1) = Translation;
-            //         new_frame->setBodyPose(T);
-            //         new_frame->Tcw_[0] = T.inverse();
-            //     }
-
-            //     // std::cout << "1:\n" << new_frame->getBodyPose() << std::endl;
-            //     // std::cout << "2:\n" << prev_frame->Twb_prior_.inverse() * new_frame->Twb_prior_ << std::endl;
-
-            //     // if (!success) {
-            //     //     std::cout << "solve relative RT failed" << std::endl;
-            //     //     std::exit(0);
-            //     // } else {
-            //     //     std::cout << "solve relative RT success" << std::endl;
-            //     //     std::exit(0);
-            //     // }
-            // }
-
             sparse_map->triangulate2();
-
-            // cv::Mat timg9 = sparse_map->drawReprojKeyPoint(new_frame->id_, 0, f, f, cx, cy);
-            // cv::Mat timg8 = sparse_map->drawReprojKeyPoint(new_frame->id_-1, 0, f, f, cx, cy);
 
             // sparse_map->printReprojError(new_frame->id_, 0, f, f, cx, cy);
             sparse_map->bundleAdjustment(f, f, cx, cy, true);
@@ -669,9 +582,7 @@ int main (int argc, char** argv) {
             server.showPath("ins_path", frame->id_, poses_prior, "ENU");
             server.showPath("cam_path", frame->id_, poses_camera, "ENU");
         } else {
-            std::cout << sparse_map->frame_map_.size() << std::endl;
             sparse_map->addKeyFrame(new_frame);
-            std::cout << sparse_map->frame_map_.size() << std::endl;
 
             poses_camera.push_back(new_frame->getBodyPose().cast<float>());
         }
@@ -679,29 +590,89 @@ int main (int argc, char** argv) {
         kf_id_and_name[new_frame->id_] = basename;
     }
 
-    std::ofstream out_file("../../../datasets/TXPJ/test2/extract/poses.txt");
-    std::string save_dir = "../../../datasets/TXPJ/test2/extract/imgs/";
-    for (auto it = kf_id_and_name.begin(); it != kf_id_and_name.end(); it++) {
-        std::string basename = it->second;
-        Frame::Ptr new_frame = sparse_map->getFrame(it->first);
-        Eigen::Matrix4d T_wc_new = new_frame->getBodyPose();
+    // std::ofstream out_file("../../../datasets/TXPJ/test2/extract/poses.txt");
+    // std::string save_dir = "../../../datasets/TXPJ/test2/extract/imgs/";
+    // for (auto it = kf_id_and_name.begin(); it != kf_id_and_name.end(); it++) {
+    //     std::string basename = it->second;
+    //     Frame::Ptr new_frame = sparse_map->getFrame(it->first);
+    //     Eigen::Matrix4d T_wc_new = new_frame->getBodyPose();
 
-        Eigen::Matrix3d R_3;
-        R_3 << 1, 0, 0,
-               0, -1, 0,
-               0, 0, -1; 
+    //     Eigen::Matrix3d R_3;
+    //     R_3 << 1, 0, 0,
+    //            0, -1, 0,
+    //            0, 0, -1; 
 
-        Eigen::Vector3d euler = R2Omega(T_wc_new.block(0, 0, 3, 3) * R_3);
+    //     Eigen::Vector3d euler = R2Omega(T_wc_new.block(0, 0, 3, 3) * R_3);
 
-        out_file << basename << " ";
-        out_file << std::fixed << std::setprecision(6) << euler(0) << " " << euler(1) << " " << euler(2) << " ";
-        out_file << std::fixed << std::setprecision(6) << T_wc_new(0, 3) << " " << T_wc_new(1, 3) << " " << T_wc_new(2, 3) << " ";
-        out_file << std::endl;
+    //     out_file << basename << " ";
+    //     out_file << std::fixed << std::setprecision(6) << euler(0) << " " << euler(1) << " " << euler(2) << " ";
+    //     out_file << std::fixed << std::setprecision(6) << T_wc_new(0, 3) << " " << T_wc_new(1, 3) << " " << T_wc_new(2, 3) << " ";
+    //     out_file << std::endl;
 
-        std::string img_path = img_dir + "/" + basename;
-        cv::Mat img = cv::imread(img_path, cv::IMREAD_COLOR);
-        cv::imwrite(save_dir + "/" + basename, img);
-    }
+    //     std::string img_path = img_dir + "/" + basename;
+    //     cv::Mat img = cv::imread(img_path, cv::IMREAD_COLOR);
+    //     cv::imwrite(save_dir + "/" + basename, img);
+    // }
 
     return 0;
 }
+
+
+// if (!is_init) {
+//     Eigen::Matrix3d Rotation;
+//     Eigen::Vector3d Translation;
+//     bool success = solveRelativeRT(sparse_map->getCorrespondences2D2D(prev_kf_id, 0, new_frame->id_, 0), Rotation, Translation);
+
+//     Eigen::Matrix4d prev_T = prev_frame->getBodyPose();
+
+//     Eigen::Matrix4d T = Eigen::Matrix4d::Identity();
+//     T.block(0, 0, 3, 3) = Rotation;
+//     T.block(0, 3, 3, 1) = Translation;
+//     Eigen::Matrix4d curr_T = prev_T * T;
+
+//     new_frame->setBodyPose(curr_T);
+//     new_frame->Tcw_[0] = curr_T.inverse();
+
+//     // std::cout << "1:\n" << new_frame->getBodyPose() << std::endl;
+//     // std::cout << "2:\n" << prev_frame->Twb_prior_.inverse() * new_frame->Twb_prior_ << std::endl;
+
+//     // std::exit(0);
+
+//     // if (!success) {
+//     //     std::cout << "solve relative RT failed" << std::endl;
+//     //     std::exit(0);
+//     // } else {
+//     //     std::cout << "solve relative RT success" << std::endl;
+//     //     std::exit(0);
+//     // }
+
+//     is_init = true;
+// } else {
+//     Eigen::Matrix3d Rotation;
+//     Eigen::Vector3d Translation;
+//     bool success = solveFrameByPnP(sparse_map->getCorrespondences2D3D(new_frame->id_, 0), Rotation, Translation);
+
+//     if (!success) {
+//         std::cout << "solve Frame By PnP failed" << std::endl;
+//         std::exit(0);
+//         new_frame->setBodyPose(prev_frame->getBodyPose());
+//         new_frame->Tcw_[0] = prev_frame->getBodyPose().inverse();
+//     } else {
+//         Eigen::Matrix4d T = Eigen::Matrix4d::Identity();
+//         T.block(0, 0, 3, 3) = Rotation;
+//         T.block(0, 3, 3, 1) = Translation;
+//         new_frame->setBodyPose(T);
+//         new_frame->Tcw_[0] = T.inverse();
+//     }
+
+//     // std::cout << "1:\n" << new_frame->getBodyPose() << std::endl;
+//     // std::cout << "2:\n" << prev_frame->Twb_prior_.inverse() * new_frame->Twb_prior_ << std::endl;
+
+//     // if (!success) {
+//     //     std::cout << "solve relative RT failed" << std::endl;
+//     //     std::exit(0);
+//     // } else {
+//     //     std::cout << "solve relative RT success" << std::endl;
+//     //     std::exit(0);
+//     // }
+// }

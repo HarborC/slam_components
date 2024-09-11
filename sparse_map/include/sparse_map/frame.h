@@ -39,7 +39,8 @@ public:
                const std::vector<std::vector<Eigen::Vector3d>> &_bearings,
                const std::vector<cv::Mat> &_descriptors = {});
               
-  void extractFeature(const std::vector<cv::Mat> &_imgs, std::string detector_type = "ORB");
+  void extractFeature(const std::vector<cv::Mat> &_imgs, std::string detector_type = "ORB",
+                      const std::vector<cv::Mat> &_masks = {});
 
   cv::Mat drawKeyPoint(const int &cam_id);
 

@@ -23,7 +23,8 @@ void Frame::addData(
 }
 
 void Frame::extractFeature(const std::vector<cv::Mat> &_imgs,
-                           std::string detector_type) {
+                           std::string detector_type, 
+                           const std::vector<cv::Mat> &_masks) {
   cam_num_ = _imgs.size();
   Tcw_.resize(cam_num_);
 
@@ -40,9 +41,17 @@ void Frame::extractFeature(const std::vector<cv::Mat> &_imgs,
     std::vector<cv::KeyPoint> kpts;
     cv::Mat descriptors;
     if (detector_type == "ORB") {
-      detector.detectORB(_imgs[i], kpts, descriptors);
+      if (_masks.empty()) {
+        detector.detectORB(_imgs[i], kpts, descriptors);
+      } else {
+        detector.detectORB(_imgs[i], kpts, descriptors, _masks[i]);
+      }
     } else if (detector_type == "SIFT") {
-      detector.detectSIFT(_imgs[i], kpts, descriptors);
+      if (_masks.empty()) {
+        detector.detectSIFT(_imgs[i], kpts, descriptors);
+      } else {
+        detector.detectSIFT(_imgs[i], kpts, descriptors, _masks[i]);
+      }
     } else {
       std::cerr << "Unknown detector type: " << detector_type << std::endl;
       return;
