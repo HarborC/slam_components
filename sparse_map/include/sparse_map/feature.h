@@ -9,18 +9,52 @@ public:
 
 public:
   Feature(const FeatureIDType &_id);
+
   ~Feature() {}
+
+  FeatureIDType id() { return id_; }
+
+  FrameIDType refFrameId() { return ref_frame_id_; }
+
+  int refCamId() { return ref_cam_id_; }
+
+  const std::unordered_map<FrameIDType, std::map<int, int>> &observations() {
+    return observations_;
+  }
 
   void addObservation(const FrameIDType &frame_id, const int &cam_id,
                       const int &pt_id);
+
+  bool hasObservation(const FrameIDType &frame_id, const int &cam_id = -1);
+
+  void removeObservation(const FrameIDType &frame_id, const int &cam_id);
+
   void removeObservationByFrameId(const FrameIDType &frame_id);
-  int frameSize();
+
+  bool isValid();
+
+  int coVisFrameSize();
+
   int observationSize();
-  void update();
 
-  // int triangulate(const FrameDataset::Ptr &frame_dataset);
+  void refUpdate();
 
-public:
+  bool isTriangulated();
+
+  double getInvDepth();
+
+  void setInvDepth(const double &inv_depth);
+
+  Eigen::Vector3d getWorldPoint();
+
+  void setWorldPoint(const Eigen::Vector3d &world_point);
+
+  double *getInvDepthParams();
+
+  double *getWorldPointParams();
+
+private:
+  // feature id
   FeatureIDType id_;
 
   // Store the observations of the features in the
@@ -34,6 +68,8 @@ public:
   // reference frame id
   FrameIDType ref_frame_id_;
   int ref_cam_id_;
+
+  // inv_depth_ and world_point_
   double inv_depth_ = -1.0;
   Eigen::Vector3d world_point_ = Eigen::Vector3d::Zero();
 

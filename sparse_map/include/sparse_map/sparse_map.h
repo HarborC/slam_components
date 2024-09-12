@@ -30,7 +30,11 @@ public:
 
   void addKeyFrame(const Frame::Ptr &frame);
 
+  void removeInvalidFeature();
+
   void removeKeyFrame(const FrameIDType &id);
+
+  void removeFeature(const FeatureIDType &id);
 
   void addIntraMatches(const FrameIDType &pre_frame_id,
                        const FrameIDType &cur_frame_id,
@@ -89,7 +93,7 @@ protected:
                    const FrameIDType &right_frame_id, const int &right_cam_id,
                    std::vector<Eigen::Vector2i> &good_matches);
 
-  void updateFeatureMap();
+  
 
 public:
   FeatureIDType feature_next_id = 0;
