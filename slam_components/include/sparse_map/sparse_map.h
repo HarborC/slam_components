@@ -36,11 +36,11 @@ public:
 
   void addIntraMatches(const FrameIDType &pre_frame_id,
                        const FrameIDType &cur_frame_id,
-                       std::vector<std::vector<Eigen::Vector2i>> intra_matches);
+                       std::vector<std::vector<std::pair<int, int>>> intra_matches);
 
   void addInterMatches(const FrameIDType &cur_frame_id,
-                       const std::vector<Eigen::Vector2i> &stereo_ids,
-                       std::vector<std::vector<Eigen::Vector2i>> inter_matches);
+                       const std::vector<std::pair<int, int>> &stereo_ids,
+                       std::vector<std::vector<std::pair<int, int>>> inter_matches);
 
   void updateKeyFramePose(const FrameIDType &id, const Eigen::Matrix4d &pose);
 
@@ -87,7 +87,7 @@ public:
 protected:
   void ransacWithF(const FrameIDType &left_frame_id, const int &left_cam_id,
                    const FrameIDType &right_frame_id, const int &right_cam_id,
-                   std::vector<Eigen::Vector2i> &good_matches);
+                   std::vector<std::pair<int, int>> &good_matches);
 
 public:
   FeatureIDType feature_next_id = 0;

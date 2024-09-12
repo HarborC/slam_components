@@ -10,9 +10,9 @@ public:
   Calibration() {}
   ~Calibration() {}
 
-  void addCamera(const Camera &camera) { camera_vec_.push_back(camera); }
-
   size_t camNum() const { return camera_vec_.size(); }
+
+  void addCamera(const Camera &camera) { camera_vec_.push_back(camera); }
 
   const Camera &getCamera(const size_t &cam_id) const {
     return camera_vec_[cam_id];

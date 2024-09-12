@@ -102,26 +102,26 @@ void SparseMap::removeFeature(const FeatureIDType &id) {
 
 void SparseMap::addInterMatches(
     const FrameIDType &cur_frame_id,
-    const std::vector<Eigen::Vector2i> &stereo_ids,
-    std::vector<std::vector<Eigen::Vector2i>> inter_matches) {
+    const std::vector<std::pair<int, int>> &stereo_ids,
+    std::vector<std::vector<std::pair<int, int>>> inter_matches) {
   assert(stereo_ids.size() == inter_matches.size());
   Frame::Ptr cur_frame = frame_map_[cur_frame_id];
 
   for (size_t pair_id = 0; pair_id < inter_matches.size(); ++pair_id) {
-    int cam_id0 = stereo_ids[pair_id](0);
-    int cam_id1 = stereo_ids[pair_id](1);
+    int cam_id0 = stereo_ids[pair_id].first;
+    int cam_id1 = stereo_ids[pair_id].second;
     for (size_t match_id = 0; match_id < inter_matches[pair_id].size();
          ++match_id) {
-      int left_pt_id = inter_matches[pair_id][match_id](0);
-      int right_pt_id = inter_matches[pair_id][match_id](1);
+      int left_pt_id = inter_matches[pair_id][match_id].first;
+      int right_pt_id = inter_matches[pair_id][match_id].second;
     }
   }
 
   // ransac
   if (use_ransac_) {
     for (size_t pair_id = 0; pair_id < stereo_ids.size(); ++pair_id) {
-      int cam_id0 = stereo_ids[pair_id](0);
-      int cam_id1 = stereo_ids[pair_id](1);
+      int cam_id0 = stereo_ids[pair_id].first;
+      int cam_id1 = stereo_ids[pair_id].second;
       ransacWithF(cur_frame_id, cam_id0, cur_frame_id, cam_id1,
                   inter_matches[pair_id]);
     }
@@ -129,12 +129,12 @@ void SparseMap::addInterMatches(
 
   // add observations (inter-frame)
   for (size_t pair_id = 0; pair_id < inter_matches.size(); ++pair_id) {
-    int cam_id0 = stereo_ids[pair_id](0);
-    int cam_id1 = stereo_ids[pair_id](1);
+    int cam_id0 = stereo_ids[pair_id].first;
+    int cam_id1 = stereo_ids[pair_id].second;
     for (size_t match_id = 0; match_id < inter_matches[pair_id].size();
          ++match_id) {
-      int left_pt_id = inter_matches[pair_id][match_id](0);
-      int right_pt_id = inter_matches[pair_id][match_id](1);
+      int left_pt_id = inter_matches[pair_id][match_id].first;
+      int right_pt_id = inter_matches[pair_id][match_id].second;
 
       Feature::Ptr left_feature, right_feature;
       FeatureIDType left_ft_id = cur_frame->feature_ids()[cam_id0][left_pt_id];
@@ -171,11 +171,9 @@ void SparseMap::addInterMatches(
 
 void SparseMap::addIntraMatches(
     const FrameIDType &pre_frame_id, const FrameIDType &cur_frame_id,
-    std::vector<std::vector<Eigen::Vector2i>> intra_matches) {
+    std::vector<std::vector<std::pair<int, int>>> intra_matches) {
   Frame::Ptr cur_frame = frame_map_[cur_frame_id];
   Frame::Ptr pre_frame = frame_map_[pre_frame_id];
-
-  std::cout << "intra_matches: " << intra_matches[0].size() << std::endl;
 
   // ransac
   if (use_ransac_) {
@@ -185,14 +183,12 @@ void SparseMap::addIntraMatches(
     }
   }
 
-  std::cout << "intra_matches: " << intra_matches[0].size() << std::endl;
-
   // add observations (intra-frame)
   for (size_t cam_id = 0; cam_id < intra_matches.size(); ++cam_id) {
     for (size_t match_id = 0; match_id < intra_matches[cam_id].size();
          ++match_id) {
-      int pre_pt_id = intra_matches[cam_id][match_id](0);
-      int cur_pt_id = intra_matches[cam_id][match_id](1);
+      int pre_pt_id = intra_matches[cam_id][match_id].first;
+      int cur_pt_id = intra_matches[cam_id][match_id].second;
 
       Feature::Ptr feature;
 
@@ -360,7 +356,7 @@ void SparseMap::ransacWithF(const FrameIDType &left_frame_id,
                             const int &left_cam_id,
                             const FrameIDType &right_frame_id,
                             const int &right_cam_id,
-                            std::vector<Eigen::Vector2i> &good_matches) {
+                            std::vector<std::pair<int, int>> &good_matches) {
   if (good_matches.size() < 8) {
     good_matches.clear();
     return;
@@ -374,8 +370,8 @@ void SparseMap::ransacWithF(const FrameIDType &left_frame_id,
 
   std::vector<cv::Point2f> un_left_pts, un_right_pts;
   for (size_t i = 0; i < good_matches.size(); ++i) {
-    int left_pt_id = good_matches[i](0);
-    int right_pt_id = good_matches[i](1);
+    int left_pt_id = good_matches[i].first;
+    int right_pt_id = good_matches[i].second;
 
     Eigen::Vector3d tmp_p;
 

@@ -185,9 +185,9 @@ cv::Mat getVaildMask(const std::vector<cv::Point2f> &pts, const cv::Mat &mask) {
   return mask_updated.clone();
 }
 
-std::vector<Eigen::Vector2i> opticalFlow(const cv::Mat &prev_img, const cv::Mat& curr_img, const std::vector<cv::Point2f> &prev_pts, std::vector<cv::Point2f> &curr_pts, const cv::Mat& curr_mask, bool double_check = false) {
+std::vector<std::pair<int, int>> opticalFlow(const cv::Mat &prev_img, const cv::Mat& curr_img, const std::vector<cv::Point2f> &prev_pts, std::vector<cv::Point2f> &curr_pts, const cv::Mat& curr_mask, bool double_check = false) {
     int need_pts_num = 500;
-    std::vector<Eigen::Vector2i> matches;
+    std::vector<std::pair<int, int>> matches;
     
     if (prev_pts.size()) {
         std::vector<uchar> status;
@@ -213,7 +213,7 @@ std::vector<Eigen::Vector2i> opticalFlow(const cv::Mat &prev_img, const cv::Mat&
         for (int i = 0; i < status.size(); i++) {
             if (status[i]) {
                 curr_pts2.push_back(curr_pts[i]);
-                matches.push_back(Eigen::Vector2i(i, curr_pts2.size() - 1));
+                matches.push_back(std::make_pair(i, curr_pts2.size() - 1));
             }
         }
         curr_pts = curr_pts2;
@@ -465,7 +465,7 @@ int main (int argc, char** argv) {
         cv::Mat curr_flow_img_processed, curr_mask;
         preprocessImage(curr_flow_img, curr_flow_img_processed, curr_mask);
 
-        std::vector<Eigen::Vector2i> flow_matches = opticalFlow(prev_flow_img, curr_flow_img_processed, prev_flow_pts, curr_flow_pts, curr_mask);
+        auto flow_matches = opticalFlow(prev_flow_img, curr_flow_img_processed, prev_flow_pts, curr_flow_pts, curr_mask);
         
         std::vector<Eigen::Vector3d> flow_bearings;
         for (int j = 0; j < curr_flow_pts.size(); j++) {
@@ -529,13 +529,13 @@ int main (int argc, char** argv) {
             matcher.matchORB(descriptors1, descriptors2, matches);
             std::cout << "matches size: " << matches.size() << std::endl;
 
-            std::vector<Eigen::Vector2i> intra_matches_0;
+            std::vector<std::pair<int, int>> intra_matches_0;
             for (int i = 0; i < matches.size(); i++) {
-                Eigen::Vector2i match(matches[i].queryIdx, matches[i].trainIdx);
+                std::pair<int, int> match(matches[i].queryIdx, matches[i].trainIdx);
                 intra_matches_0.push_back(match);
             }
             
-            std::vector<std::vector<Eigen::Vector2i>> intra_matches;
+            std::vector<std::vector<std::pair<int, int>>> intra_matches;
             intra_matches.push_back(intra_matches_0);
             auto prev_kf_id = sparse_map->last_frame_->id();
             Frame::Ptr prev_frame = sparse_map->getFrame(prev_kf_id);
@@ -584,7 +584,6 @@ int main (int argc, char** argv) {
             server.showPath("cam_path", frame->id(), poses_camera, "ENU");
         } else {
             sparse_map->addKeyFrame(new_frame);
-
             poses_camera.push_back(new_frame->getBodyPose().cast<float>());
         }
 

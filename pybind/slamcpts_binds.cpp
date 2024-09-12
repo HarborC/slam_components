@@ -18,18 +18,15 @@ PYBIND11_MODULE(pyslamcpts, m) {
   py::class_<Frame>(m, "Frame").def(py::init<long long int>());
 
   py::class_<SparseMap>(m, "SparseMap")
-      .def(py::init<bool>(), py::arg("use_ransac") = true)
+      .def(py::init<const Calibration::Ptr &, bool>(), py::arg("calibration"), py::arg("use_ransac") = true)
       .def("clear", &SparseMap::clear, "clear the sparse map")
-      .def("set_calibration", &SparseMap::setCalibration,
-           "set calibration of the sparse map")
       .def("add_keyframe", static_cast<void (SparseMap::*)(
                const FrameIDType &, const std::vector<cv::Mat> &,
                const std::vector<std::vector<Eigen::Vector2d>> &,
-               const std::vector<std::vector<Eigen::Vector3d>> &,
                const std::vector<cv::Mat> &)>(&SparseMap::addKeyFrame),
            "add key frame to the sparse map", 
            py::arg("id"), py::arg("imgs"), py::arg("keypoints"), 
-           py::arg("bearings"), py::arg("descriptors") = std::vector<cv::Mat>())
+           py::arg("descriptors") = std::vector<cv::Mat>())
       .def("remove_keyframe", &SparseMap::removeKeyFrame,
            "remove key frame from the sparse map")
       .def("add_intra_matches", &SparseMap::addIntraMatches,
