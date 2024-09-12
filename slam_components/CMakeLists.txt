@@ -1,17 +1,18 @@
-project(sparse_map)
+find_package(general_camera_model REQUIRED)
 
 include_directories(
-  ${PROJECT_SOURCE_DIR}/include
+  ${CMAKE_CURRENT_SOURCE_DIR}/include
 )
 
 file(GLOB SRC
-  ${PROJECT_SOURCE_DIR}/src/*.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/sparse_map/*.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/calibration/*.cpp
 )
 
 message(STATUS "SRC: ${SRC}")
 
 add_library(${PROJECT_NAME} SHARED ${SRC})
-target_link_libraries(${PROJECT_NAME} ${OpenCV_LIBS} ${CERES_LIBRARIES})
+target_link_libraries(${PROJECT_NAME} ${OpenCV_LIBS} ${CERES_LIBRARIES} general_camera_model)
 target_include_directories(${PROJECT_NAME} PUBLIC 
                            $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
                            $<INSTALL_INTERFACE:include>)

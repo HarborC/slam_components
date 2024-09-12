@@ -10,6 +10,7 @@
 #include "sparse_map/matcher.h"
 
 #include "foxglove/visualizer.h"
+#include "general_camera_model/function.hpp"
 
 using namespace Eigen;
 
@@ -419,17 +420,26 @@ int main (int argc, char** argv) {
     std::vector<std::string> img_files = Utils::GetFileList(img_dir);
     std::sort(img_files.begin(), img_files.end());
 
-    int scale = 4;
-
+    double scale = 4;
+    int width = 4096 / scale;
+    int height = 3072 / scale;
     double f = 33400 / scale;
-    double cx = 4096 / 2 / scale;
-    double cy = 3072 / 2 / scale;
+    double cx = width / 2.0;
+    double cy = height / 2.0;
 
+    Calibration::Ptr calib(new Calibration());
+    general_camera_model::GeneralCameraModel pinhole_camera = general_camera_model::getSimplePinhole(f, f, cx, cy, width, height);
+
+    Camera camera;
+    camera.setCameraModel(pinhole_camera);
+
+    calib->addCamera(camera);
+    
     std::vector<Eigen::Matrix4f> poses_prior;
     std::vector<Eigen::Matrix4f> poses_camera;
 
-    SparseMap::Ptr flow_sparse_map(new SparseMap(true));
-    SparseMap::Ptr sparse_map(new SparseMap(true));
+    SparseMap::Ptr flow_sparse_map(new SparseMap(calib, true));
+    SparseMap::Ptr sparse_map(new SparseMap(calib, true));
 
     Frame::Ptr prev_flow_frame;
     cv::Mat prev_flow_img, curr_flow_img;
@@ -460,7 +470,7 @@ int main (int argc, char** argv) {
         std::vector<Eigen::Vector3d> flow_bearings;
         for (int j = 0; j < curr_flow_pts.size(); j++) {
             Eigen::Vector3d bearing;
-            bearing << (curr_flow_pts[j].x - cx) / f, (curr_flow_pts[j].y - cy) / f, 1;
+            pinhole_camera.planeToSpace(Eigen::Vector2d(curr_flow_pts[j].x, curr_flow_pts[j].y), &bearing);
             flow_bearings.push_back(bearing);
         }
 
@@ -504,7 +514,7 @@ int main (int argc, char** argv) {
         for (int j = 0; j < new_frame->keypoints()[0].size(); j++) {
             Eigen::Vector2d kp = new_frame->keypoints()[0][j];
             Eigen::Vector3d bearing;
-            bearing << (kp.x() - cx) / f, (kp.y() - cy) / f, 1;
+            pinhole_camera.planeToSpace(kp, &bearing);
             bearings[0][j] = bearing;
         }
         new_frame->addData({}, {}, {bearings});
@@ -538,9 +548,7 @@ int main (int argc, char** argv) {
 
             sparse_map->triangulate2();
 
-            // sparse_map->printReprojError(new_frame->id(), 0, f, f, cx, cy);
-            sparse_map->bundleAdjustment(f, f, cx, cy, true);
-            // sparse_map->printReprojError(new_frame->id(), 0, f, f, cx, cy);
+            sparse_map->bundleAdjustment(true);
 
             poses_camera.push_back(new_frame->getBodyPose().cast<float>());
 
@@ -561,10 +569,10 @@ int main (int argc, char** argv) {
                 world_points_f.push_back(pt);
             }
 
-            cv::Mat timg2 = sparse_map->drawReprojKeyPoint(new_frame->id(), 0, f, f, cx, cy);
+            cv::Mat timg2 = sparse_map->drawReprojKeyPoint(new_frame->id(), 0);
             server.showImage("reproj_image2", new_frame->id(), timg2);
 
-            cv::Mat timg1 = sparse_map->drawReprojKeyPoint(new_frame->id()-1, 0, f, f, cx, cy);
+            cv::Mat timg1 = sparse_map->drawReprojKeyPoint(new_frame->id()-1, 0);
             server.showImage("reproj_image1", new_frame->id()-1, timg1);
 
             // server.showImage("reproj_image3", new_frame->id(), timg9);
@@ -606,7 +614,7 @@ int main (int argc, char** argv) {
         cv::Mat img = cv::imread(img_path, cv::IMREAD_COLOR);
         cv::imwrite(save_dir + "/" + basename, img);
 
-        cv::Mat timg1 = sparse_map->drawReprojKeyPoint(new_frame->id(), 0, f, f, cx, cy);
+        cv::Mat timg1 = sparse_map->drawReprojKeyPoint(new_frame->id(), 0);
         cv::imwrite("../../../datasets/TXPJ/test2/extract/imgs_reproj/" + std::to_string(new_frame->id()) + ".png", timg1);
     }
     out_file.close();

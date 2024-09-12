@@ -22,6 +22,8 @@ public:
     return observations_;
   }
 
+  int observation(const FrameIDType &frame_id, const int &cam_id);
+
   void addObservation(const FrameIDType &frame_id, const int &cam_id,
                       const int &pt_id);
 

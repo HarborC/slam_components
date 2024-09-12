@@ -1,12 +1,13 @@
 #pragma once
 
+#include "general_camera_model/general_camera_model.hpp"
 #include <ceres/ceres.h>
 
-struct PinholeReprojError {
+struct PlaneReprojError {
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW
-  PinholeReprojError(const Eigen::Vector2d &_pt, const double &_fx,
-                     const double &_fy, const double &_cx, const double &_cy)
-      : pt(_pt), fx(_fx), fy(_fy), cx(_cx), cy(_cy) {}
+  PlaneReprojError(const Eigen::Vector2d &_pt,
+                   const general_camera_model::GeneralCameraModel &_camera)
+      : pt(_pt), camera(_camera) {}
 
   template <typename T>
   bool operator()(const T *const twc, const T *const qwc, const T *const pw,
@@ -25,24 +26,24 @@ struct PinholeReprojError {
 
     Eigen::Map<Vector2T> residual(residuals);
     Vector2T pt_rep;
-
-    pt_rep[0] = T(fx) * p_c[0] / p_c[2] + T(cx);
-    pt_rep[1] = T(fy) * p_c[1] / p_c[2] + T(cy);
+    std::vector<double> cam_params = camera.getParams();
+    std::vector<T> cam_params_t(cam_params.begin(), cam_params.end()); 
+    camera.spaceToPlane(&cam_params_t[0], p_c, &pt_rep);
 
     residual = pt.template cast<T>() - pt_rep;
 
     return true;
   }
 
-  static ceres::CostFunction *Create(const Eigen::Vector2d &_pt,
-                                     const double &_fx, const double &_fy,
-                                     const double &_cx, const double &_cy) {
-    return (new ceres::AutoDiffCostFunction<PinholeReprojError, 2, 3, 4, 2>(
-        new PinholeReprojError(_pt, _fx, _fy, _cx, _cy)));
+  static ceres::CostFunction *
+  Create(const Eigen::Vector2d &_pt,
+         const general_camera_model::GeneralCameraModel &_camera) {
+    return (new ceres::AutoDiffCostFunction<PlaneReprojError, 2, 3, 4, 2>(
+        new PlaneReprojError(_pt, _camera)));
   }
 
   Eigen::Vector2d pt;
-  double fx, fy, cx, cy;
+  const general_camera_model::GeneralCameraModel &camera;
 };
 
 struct PoseError {

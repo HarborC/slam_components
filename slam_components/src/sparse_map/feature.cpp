@@ -33,13 +33,15 @@ bool Feature::hasObservation(const FrameIDType &frame_id, const int &cam_id) {
     if (cam_id < 0) {
       return true;
     } else {
-      return observations_[frame_id].find(cam_id) != observations_[frame_id].end();
+      return observations_[frame_id].find(cam_id) !=
+             observations_[frame_id].end();
     }
   }
   return false;
 }
 
-void Feature::removeObservation(const FrameIDType &frame_id, const int &cam_id) {
+void Feature::removeObservation(const FrameIDType &frame_id,
+                                const int &cam_id) {
   if (hasObservation(frame_id, cam_id)) {
     observations_[frame_id].erase(cam_id);
     observation_size_--;
@@ -90,4 +92,13 @@ void Feature::setInvDepth(const double &inv_depth) { inv_depth_ = inv_depth; }
 
 void Feature::setWorldPoint(const Eigen::Vector3d &world_point) {
   world_point_ = world_point;
+}
+
+int Feature::observation(const FrameIDType &frame_id, const int &cam_id) {
+  if (observations_.find(frame_id) != observations_.end()) {
+    if (observations_[frame_id].find(cam_id) != observations_[frame_id].end()) {
+      return observations_[frame_id][cam_id];
+    }
+  }
+  return -1;
 }

@@ -29,5 +29,5 @@ include_directories(${EIGEN3_INCLUDE_DIR})
 find_package(PCL REQUIRED)
 include_directories(${PCL_INCLUDE_DIR})
 
-add_subdirectory(sparse_map)
+add_subdirectory(slam_components)
 add_subdirectory(pybind)

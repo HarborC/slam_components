@@ -1,5 +1,6 @@
 #pragma once
 
+#include "calibration/calibration.h"
 #include "sparse_map/feature.h"
 #include "sparse_map/frame.h"
 
@@ -7,7 +8,10 @@ class SparseMap {
 public:
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW
   using Ptr = std::shared_ptr<SparseMap>;
-  SparseMap(bool use_ransac = true) : use_ransac_(use_ransac) {}
+
+public:
+  SparseMap(const Calibration::Ptr &calibration, bool use_ransac = true)
+      : calibration_(calibration), use_ransac_(use_ransac) {}
   ~SparseMap() {
     clear();
     std::cout << "SparseMap is destructed" << std::endl;
@@ -18,14 +22,8 @@ public:
     frame_map_.clear();
   }
 
-  void setCalibration(const std::vector<Eigen::Matrix4d> &calibrations) {
-    cam_num_ = calibrations.size();
-    calibrations_ = calibrations;
-  }
-
   void addKeyFrame(const FrameIDType &id, const std::vector<cv::Mat> &imgs,
                    const std::vector<std::vector<Eigen::Vector2d>> &keypoints,
-                   const std::vector<std::vector<Eigen::Vector3d>> &bearings,
                    const std::vector<cv::Mat> &descriptors = {});
 
   void addKeyFrame(const Frame::Ptr &frame);
@@ -49,8 +47,7 @@ public:
   void triangulate();
   void triangulate2();
 
-  bool bundleAdjustment(const double &fx, const double &fy, const double &cx,
-                        const double &cy, bool use_prior = false);
+  bool bundleAdjustment(bool use_prior = false);
 
   std::vector<std::pair<size_t, size_t>> getMatches(const FrameIDType &f_id1,
                                                     const int &c_id1,
@@ -68,8 +65,9 @@ public:
 
   Frame::Ptr getFrame(const FrameIDType &id) { return frame_map_[id]; }
 
+  std::vector<Eigen::Vector3d> getWorldPoints();
+
 public:
-  // debug output
   cv::Mat drawKeypoint(FrameIDType frame_id, int cam_id);
 
   cv::Mat drawMatchedKeypoint(FrameIDType frame_id, int cam_id);
@@ -82,18 +80,14 @@ public:
 
   cv::Mat drawStereoKeyPoint(FrameIDType frame_id);
 
-  std::vector<Eigen::Vector3d> getWorldPoints();
+  cv::Mat drawReprojKeyPoint(FrameIDType frame_id, int cam_id);
 
-  void printReprojError(const FrameIDType &f_id1, const int &c_id1, const double &fx, const double &fy, const double &cx, const double &cy);
-
-  cv::Mat drawReprojKeyPoint(FrameIDType frame_id, int cam_id, const double &fx, const double &fy, const double &cx, const double &cy);
+  void printReprojError(const FrameIDType &f_id1, const int &c_id1);
 
 protected:
   void ransacWithF(const FrameIDType &left_frame_id, const int &left_cam_id,
                    const FrameIDType &right_frame_id, const int &right_cam_id,
                    std::vector<Eigen::Vector2i> &good_matches);
-
-  
 
 public:
   FeatureIDType feature_next_id = 0;
@@ -101,8 +95,8 @@ public:
   Frame::Ptr last_frame_ = nullptr;
   FeatureMap feature_map_;
   FrameMap frame_map_;
+  Calibration::Ptr calibration_;
+
+protected:
   bool use_ransac_ = true;
-  int cam_num_ = 1;
-  std::vector<Eigen::Matrix4d> calibrations_ = {
-      Eigen::Matrix4d::Identity()}; // Tbc
 };
