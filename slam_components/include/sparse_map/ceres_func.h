@@ -46,6 +46,92 @@ struct PlaneReprojError {
   const general_camera_model::GeneralCameraModel &camera;
 };
 
+struct PinholeReprojError {
+  EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+  PinholeReprojError(const Eigen::Vector2d &_pt, const double &_fx,
+                     const double &_fy, const double &_cx, const double &_cy)
+      : pt(_pt), fx(_fx), fy(_fy), cx(_cx), cy(_cy) {}
+
+  template <typename T>
+  bool operator()(const T *const twc, const T *const qwc, const T *const pw,
+                  T *residuals) const {
+    using QuatT = Eigen::Quaternion<T>;
+    using Vector3T = Eigen::Matrix<T, 3, 1>;
+    using Vector2T = Eigen::Matrix<T, 2, 1>;
+    using Matrix3T = Eigen::Matrix<T, 3, 3>;
+
+    Vector3T t_wc(twc[0], twc[1], twc[2]);
+    QuatT q_wc(qwc[3], qwc[0], qwc[1], qwc[2]);
+
+    Vector3T p_w(pw[0], pw[1], T(0));
+
+    Vector3T p_c = q_wc.inverse() * (p_w - t_wc);
+
+    Eigen::Map<Vector2T> residual(residuals);
+    Vector2T pt_rep;
+
+    pt_rep[0] = T(fx) * p_c[0] / p_c[2] + T(cx);
+    pt_rep[1] = T(fy) * p_c[1] / p_c[2] + T(cy);
+
+    residual = pt.template cast<T>() - pt_rep;
+
+    return true;
+  }
+
+  static ceres::CostFunction *Create(const Eigen::Vector2d &_pt,
+                                     const double &_fx, const double &_fy,
+                                     const double &_cx, const double &_cy) {
+    return (new ceres::AutoDiffCostFunction<PinholeReprojError, 2, 3, 4, 2>(
+        new PinholeReprojError(_pt, _fx, _fy, _cx, _cy)));
+  }
+
+  Eigen::Vector2d pt;
+  double fx, fy, cx, cy;
+};
+
+struct PinholeReprojError2 {
+  EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+  PinholeReprojError2(const Eigen::Vector2d &_pt, const double &_fx,
+                     const double &_fy, const double &_cx, const double &_cy)
+      : pt(_pt), fx(_fx), fy(_fy), cx(_cx), cy(_cy) {}
+
+  template <typename T>
+  bool operator()(const T *const twc, const T *const qwc, const T *const pw,
+                  T *residuals) const {
+    using QuatT = Eigen::Quaternion<T>;
+    using Vector3T = Eigen::Matrix<T, 3, 1>;
+    using Vector2T = Eigen::Matrix<T, 2, 1>;
+    using Matrix3T = Eigen::Matrix<T, 3, 3>;
+
+    Vector3T t_wc(twc[0], twc[1], twc[2]);
+    QuatT q_wc(qwc[3], qwc[0], qwc[1], qwc[2]);
+
+    Vector3T p_w(pw[0], pw[1], pw[2]);
+
+    Vector3T p_c = q_wc.inverse() * (p_w - t_wc);
+
+    Eigen::Map<Vector2T> residual(residuals);
+    Vector2T pt_rep;
+
+    pt_rep[0] = T(fx) * p_c[0] / p_c[2] + T(cx);
+    pt_rep[1] = T(fy) * p_c[1] / p_c[2] + T(cy);
+
+    residual = pt.template cast<T>() - pt_rep;
+
+    return true;
+  }
+
+  static ceres::CostFunction *Create(const Eigen::Vector2d &_pt,
+                                     const double &_fx, const double &_fy,
+                                     const double &_cx, const double &_cy) {
+    return (new ceres::AutoDiffCostFunction<PinholeReprojError2, 2, 3, 4, 3>(
+        new PinholeReprojError2(_pt, _fx, _fy, _cx, _cy)));
+  }
+
+  Eigen::Vector2d pt;
+  double fx, fy, cx, cy;
+};
+
 struct PoseError {
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW
   PoseError(Eigen::Matrix4d pose, double rot_weight, double pos_weight)

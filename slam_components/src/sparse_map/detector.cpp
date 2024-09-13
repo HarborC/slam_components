@@ -19,7 +19,7 @@ void Detector::detectORB(const cv::Mat &img,
   cv::Ptr<cv::ORB> orb =
       cv::ORB::create(2000, 1.2f, 8, 31, 0, 2, cv::ORB::HARRIS_SCORE, 31, 20);
   orb->detectAndCompute(clahe_img, mask, keypoints, descriptors);
-  std::cout << "ORB keypoints: " << keypoints.size() << std::endl;
+  // std::cout << "ORB keypoints: " << keypoints.size() << std::endl;
 }
 
 void Detector::detectSIFT(const cv::Mat &img,

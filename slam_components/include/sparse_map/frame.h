@@ -8,7 +8,7 @@ public:
   using Ptr = std::shared_ptr<Frame>;
 
 public:
-  Frame(FrameIDType _id) : id_(_id) {}
+  Frame(FrameIDType _id, int _cam_num);
 
   virtual ~Frame() {}
 
@@ -61,6 +61,7 @@ public:
 public:
   Eigen::Matrix4d Twb_prior_;
   std::vector<Eigen::Matrix4d> Tcw_;
+  std::vector<std::set<std::pair<FrameIDType, int>>> matched_frames_;
 
 private:
   FrameIDType id_;

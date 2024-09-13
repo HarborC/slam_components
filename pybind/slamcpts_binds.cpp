@@ -5,6 +5,7 @@
 #include <pybind11/stl_bind.h>
 
 #include "sparse_map/sparse_map.h"
+#include "calibration/calibration.h"
 #include "ndarray_converter.h"
 
 namespace py = pybind11;
@@ -15,7 +16,10 @@ PYBIND11_MODULE(pyslamcpts, m) {
   using namespace pybind11::literals;
   m.doc() = "python interface for pyslamcpts";
 
-  py::class_<Frame>(m, "Frame").def(py::init<long long int>());
+  py::class_<Frame>(m, "Frame").def(py::init<long long int, int>());
+
+  py::class_<Calibration, Calibration::Ptr>(m, "Calibration")
+      .def(py::init<>());
 
   py::class_<SparseMap>(m, "SparseMap")
       .def(py::init<const Calibration::Ptr &, bool>(), py::arg("calibration"), py::arg("use_ransac") = true)

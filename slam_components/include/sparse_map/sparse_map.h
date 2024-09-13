@@ -34,6 +34,12 @@ public:
 
   void removeFeature(const FeatureIDType &id);
 
+  void addMatches(const FrameIDType &left_frame_id,
+                  const int &left_cam_id,
+                  const FrameIDType &right_frame_id,
+                  const int &right_cam_id,
+                  std::vector<std::pair<int, int>> matches);
+
   void addIntraMatches(const FrameIDType &pre_frame_id,
                        const FrameIDType &cur_frame_id,
                        std::vector<std::vector<std::pair<int, int>>> intra_matches);
@@ -42,12 +48,21 @@ public:
                        const std::vector<std::pair<int, int>> &stereo_ids,
                        std::vector<std::vector<std::pair<int, int>>> inter_matches);
 
+  void matchTwoFrames(const FrameIDType &f_id1, const int &c_id1,
+                      const FrameIDType &f_id2, const int &c_id2);
+
+  void matchLocalMap(const FrameIDType &f_id1, const int &c_id1);
+
+  void matchByPolyArea(const FrameIDType &f_id1, const int &c_id1);
+
   void updateKeyFramePose(const FrameIDType &id, const Eigen::Matrix4d &pose);
 
   void triangulate();
   void triangulate2();
 
-  bool bundleAdjustment(bool use_prior = false);
+  bool bundleAdjustment(bool use_prior = false, int opt_num = 10);
+
+  bool bundleAdjustment2(bool use_prior = false, int opt_num = 10);
 
   std::vector<std::pair<size_t, size_t>> getMatches(const FrameIDType &f_id1,
                                                     const int &c_id1,
@@ -85,7 +100,7 @@ public:
   void printReprojError(const FrameIDType &f_id1, const int &c_id1);
 
 protected:
-  void ransacWithF(const FrameIDType &left_frame_id, const int &left_cam_id,
+  bool ransacWithF(const FrameIDType &left_frame_id, const int &left_cam_id,
                    const FrameIDType &right_frame_id, const int &right_cam_id,
                    std::vector<std::pair<int, int>> &good_matches);
 

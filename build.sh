@@ -12,4 +12,5 @@ cmake -DCMAKE_BUILD_TYPE=Release ..
 make -j
 make install
 
-# ./sparse_map/apps/seq_data_test
+rm -r ../../../tmp/test/*
+./slam_components/apps/seq_data_test

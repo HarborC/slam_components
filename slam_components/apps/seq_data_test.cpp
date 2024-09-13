@@ -11,6 +11,7 @@
 
 #include "foxglove/visualizer.h"
 #include "general_camera_model/function.hpp"
+#include "utils/log_utils.h"
 
 using namespace Eigen;
 
@@ -134,16 +135,6 @@ std::map<std::string, std::vector<double>> readCSV(const std::string& filename) 
     }
 
     file.close();
-
-    // // print
-    // for (auto it = ins_data.begin(); it != ins_data.end(); it++) {
-    //     std::cout << it->first << ": ";
-    //     for (int i = 0; i < it->second.size(); i++) {
-    //         std::cout << it->second[i] << " ";
-    //     }
-    //     std::cout << std::endl;
-    // }
-    // std::cout << "ins_data size: " << ins_data.size() << std::endl;
 
     return ins_data;
 }
@@ -384,8 +375,8 @@ Eigen::Matrix4d getENUPose(const std::vector<double> &ins) {
     double pitch = ins[2] * M_PI / 180;
     double yaw = ins[3] * M_PI / 180;
     double roll = ins[4] * M_PI / 180;
-    double lat = ins[6] * M_PI / 180;
     double lon = ins[5] * M_PI / 180;
+    double lat = ins[6] * M_PI / 180;
     double alt = ins[7];
 
     Eigen::Matrix3d R_nue2body = nueToBody(yaw, pitch, roll);
@@ -409,10 +400,16 @@ Eigen::Matrix4d getENUPose(const std::vector<double> &ins) {
     return T_wc;
 }
 
+
 int main (int argc, char** argv) {
     Visualizer server(8088);
+
+    TimeTicToc time;
+
     std::string img_dir = "../../../datasets/TXPJ/test2/raw_data/img2_raw/";
     auto ins_data = readCSV("../../../datasets/TXPJ/test2/raw_data/ins2.csv");
+
+    bool is_publised = false;
 
     // std::string img_dir = "../../../datasets/TXPJ/test1/img1/";
     // auto ins_data = readCSV("../../../datasets/TXPJ/test1/ins1.csv");
@@ -436,7 +433,6 @@ int main (int argc, char** argv) {
     calib->addCamera(camera);
     
     std::vector<Eigen::Matrix4f> poses_prior;
-    std::vector<Eigen::Matrix4f> poses_camera;
 
     SparseMap::Ptr flow_sparse_map(new SparseMap(calib, true));
     SparseMap::Ptr sparse_map(new SparseMap(calib, true));
@@ -458,7 +454,7 @@ int main (int argc, char** argv) {
         Eigen::Matrix4d T_wc = getENUPose(ins);
 
         // optical flow
-        Frame::Ptr frame(new Frame(flow_sparse_map->frame_next_id++));
+        Frame::Ptr frame(new Frame(flow_sparse_map->frame_next_id++, calib->camNum()));
         curr_flow_img = cv::imread(img_files[i], cv::IMREAD_COLOR);
         cv::resize(curr_flow_img, curr_flow_img, cv::Size(curr_flow_img.cols / scale, curr_flow_img.rows / scale));
 
@@ -495,7 +491,7 @@ int main (int argc, char** argv) {
 
             double TH_ratio = 0.5;
             if (ratio1 < TH_ratio || ratio2 < TH_ratio) {
-                std::cout << std::fixed << "keyframe: " << frame->id() << " ratio1: " << ratio1 << " ratio2: " << ratio2 << std::endl;              
+                // std::cout << std::fixed << "keyframe: " << frame->id() << " ratio1: " << ratio1 << " ratio2: " << ratio2 << std::endl;              
             } else {
                 continue;
             }
@@ -505,7 +501,7 @@ int main (int argc, char** argv) {
 
         poses_prior.push_back(T_wc.cast<float>());
 
-        Frame::Ptr new_frame(new Frame(sparse_map->frame_next_id++));
+        Frame::Ptr new_frame(new Frame(sparse_map->frame_next_id++, calib->camNum()));
         new_frame->Twb_prior_ = T_wc;
         new_frame->extractFeature({curr_flow_img}, "ORB", {curr_mask});
 
@@ -522,76 +518,89 @@ int main (int argc, char** argv) {
         new_frame->setBodyPose(T_wc);
 
         if (sparse_map->last_frame_) {
-            const cv::Mat &descriptors1 = sparse_map->last_frame_->descriptors()[0];
-            const cv::Mat &descriptors2 = new_frame->descriptors()[0];
-            std::vector<cv::DMatch> matches;
-            Matcher matcher;
-            matcher.matchORB(descriptors1, descriptors2, matches);
-            std::cout << "matches size: " << matches.size() << std::endl;
-
-            std::vector<std::pair<int, int>> intra_matches_0;
-            for (int i = 0; i < matches.size(); i++) {
-                std::pair<int, int> match(matches[i].queryIdx, matches[i].trainIdx);
-                intra_matches_0.push_back(match);
-            }
-            
-            std::vector<std::vector<std::pair<int, int>>> intra_matches;
-            intra_matches.push_back(intra_matches_0);
             auto prev_kf_id = sparse_map->last_frame_->id();
             Frame::Ptr prev_frame = sparse_map->getFrame(prev_kf_id);
+
             sparse_map->addKeyFrame(new_frame);
 
-            sparse_map->addIntraMatches(prev_kf_id, new_frame->id(), intra_matches);
-
-            cv::Mat timg5 = sparse_map->drawMatches(new_frame->id(), 0, new_frame->id()-1, 0);
-            cv::imwrite("../../../tmp/test/matches_" + std::to_string(new_frame->id()) + "_" + std::to_string(new_frame->id()-1) + ".png", timg5);
+            sparse_map->matchTwoFrames(prev_kf_id, 0, new_frame->id(), 0);
 
             sparse_map->triangulate2();
 
             sparse_map->bundleAdjustment(true);
 
-            poses_camera.push_back(new_frame->getBodyPose().cast<float>());
+            sparse_map->matchByPolyArea(new_frame->id(), 0);
 
-            cv::Mat timg = frame->drawKeyPoint(0);
-            server.showImage("image", frame->id(), timg);
+            sparse_map->triangulate2();
 
-            cv::Mat timg3 = flow_sparse_map->drawFlow(frame->id(), 0);
-            server.showImage("flow_image", frame->id(), timg3);
+            sparse_map->bundleAdjustment(true);
 
-            cv::Mat timg4 = sparse_map->drawFlow(new_frame->id(), 0, new_frame->id()-1);
-            server.showImage("flow_image2", new_frame->id(), timg4);
+            if (is_publised) {
+                cv::Mat timg = frame->drawKeyPoint(0);
+                server.showImage("image", frame->id(), timg);
 
-            std::vector<Eigen::Vector3d> world_points = sparse_map->getWorldPoints();
+                cv::Mat timg3 = flow_sparse_map->drawFlow(frame->id(), 0);
+                server.showImage("flow_image", frame->id(), timg3);
 
-            std::vector<std::vector<float>> world_points_f;
-            for (int i = 0; i < world_points.size(); i++) {
-                std::vector<float> pt = {world_points[i].x(), world_points[i].y(), world_points[i].z()};
-                world_points_f.push_back(pt);
+                cv::Mat timg4 = sparse_map->drawFlow(new_frame->id(), 0, new_frame->id()-1);
+                server.showImage("flow_image2", new_frame->id(), timg4);
+
+                std::vector<Eigen::Vector3d> world_points = sparse_map->getWorldPoints();
+                std::vector<std::vector<float>> world_points_f;
+                for (int i = 0; i < world_points.size(); i++) {
+                    std::vector<float> pt = {world_points[i].x(), world_points[i].y(), world_points[i].z()};
+                    world_points_f.push_back(pt);
+                }
+
+                cv::Mat timg2 = sparse_map->drawReprojKeyPoint(new_frame->id(), 0);
+                server.showImage("reproj_image2", new_frame->id(), timg2);
+
+                cv::Mat timg1 = sparse_map->drawReprojKeyPoint(new_frame->id()-1, 0);
+                server.showImage("reproj_image1", new_frame->id()-1, timg1);
+
+                // server.showImage("reproj_image3", new_frame->id(), timg9);
+                // server.showImage("reproj_image4", new_frame->id()-1, timg8);
+
+                server.showPointCloud("world_points", new_frame->id(), world_points_f, {}, "ENU");
+
+                server.showPath("ins_path", frame->id(), poses_prior, "ENU");
+
+                std::vector<Eigen::Matrix4f> poses_camera;
+                for (auto it = sparse_map->frame_map_.begin(); it != sparse_map->frame_map_.end(); ++it) {
+                    Frame::Ptr frame = it->second;
+                    poses_camera.push_back(frame->getBodyPose().cast<float>());
+                }
+                server.showPath("cam_path", frame->id(), poses_camera, "ENU");
             }
-
-            cv::Mat timg2 = sparse_map->drawReprojKeyPoint(new_frame->id(), 0);
-            server.showImage("reproj_image2", new_frame->id(), timg2);
-
-            cv::Mat timg1 = sparse_map->drawReprojKeyPoint(new_frame->id()-1, 0);
-            server.showImage("reproj_image1", new_frame->id()-1, timg1);
-
-            // server.showImage("reproj_image3", new_frame->id(), timg9);
-            // server.showImage("reproj_image4", new_frame->id()-1, timg8);
-
-            server.showPointCloud("world_points", new_frame->id(), world_points_f, {}, "ENU");
-
-            server.showPath("ins_path", frame->id(), poses_prior, "ENU");
-            server.showPath("cam_path", frame->id(), poses_camera, "ENU");
         } else {
             sparse_map->addKeyFrame(new_frame);
-            poses_camera.push_back(new_frame->getBodyPose().cast<float>());
+
+            if (is_publised) {
+                std::vector<Eigen::Matrix4f> poses_camera;
+                for (auto it = sparse_map->frame_map_.begin(); it != sparse_map->frame_map_.end(); ++it) {
+                    Frame::Ptr frame = it->second;
+                    poses_camera.push_back(frame->getBodyPose().cast<float>());
+                }
+                server.showPath("cam_path", frame->id(), poses_camera, "ENU");
+            }
+            
         }
 
         kf_id_and_name[new_frame->id()] = basename;
     }
 
+    sparse_map->bundleAdjustment2(false, 100);
+
+    double all_time = time.toc();
+    std::cout << "all time: " << all_time /1000 << " s" << std::endl;
+
     std::ofstream out_file("../../../datasets/TXPJ/test2/extract/poses.txt");
     std::string save_dir = "../../../datasets/TXPJ/test2/extract/imgs/";
+    out_file << std::fixed << kf_id_and_name.size() << " 1 0" << std::endl;
+    out_file << "0      4096 	3072	1.0	33400	0      0      0      0      0      0      0      0      0      0  " << std::endl;
+
+    Eigen::Vector3d euler0 = Eigen::Vector3d::Zero();
+    int index = 0;
     for (auto it = kf_id_and_name.begin(); it != kf_id_and_name.end(); it++) {
         std::string basename = it->second;
         Frame::Ptr new_frame = sparse_map->getFrame(it->first);
@@ -603,11 +612,37 @@ int main (int argc, char** argv) {
                0, 0, -1; 
 
         Eigen::Vector3d euler = R2Omega(T_wc_new.block(0, 0, 3, 3) * R_3);
+        euler0 += euler;
+        index++;
+    }
+    euler0 /= index;
 
-        out_file << basename << " ";
-        out_file << std::fixed << std::setprecision(6) << euler(0) << " " << euler(1) << " " << euler(2) << " ";
-        out_file << std::fixed << std::setprecision(6) << T_wc_new(0, 3) << " " << T_wc_new(1, 3) << " " << T_wc_new(2, 3) << " ";
-        out_file << std::endl;
+    Eigen::Matrix4d T_wc0 = sparse_map->getFrame(kf_id_and_name.begin()->first)->getBodyPose();
+    T_wc0.block(0, 0, 3, 3) = Omega2R(euler0);
+
+    Eigen::Matrix4d T_wc0_inv = T_wc0.inverse();
+
+    index = 0;
+    for (auto it = kf_id_and_name.begin(); it != kf_id_and_name.end(); it++) {
+        std::string basename = it->second;
+        Frame::Ptr new_frame = sparse_map->getFrame(it->first);
+        Eigen::Matrix4d T_wc_new = new_frame->getBodyPose();
+
+        Eigen::Matrix3d R_3;
+        R_3 << 1, 0, 0,
+               0, -1, 0,
+               0, 0, -1; 
+
+        T_wc_new.block(0, 0, 3, 3) = T_wc_new.block(0, 0, 3, 3) * R_3;
+        T_wc_new = T_wc0_inv * T_wc_new;
+
+        Eigen::Vector3d euler = R2Omega(T_wc_new.block(0, 0, 3, 3));
+
+        out_file << index++ << " 0 0 " << std::endl; 
+        out_file << basename << std::endl;
+        out_file << " 0                   0                   0                   0                   0                   0                   0                   0                   0" << std::endl;
+        out_file << std::fixed << " " << std::setprecision(6) << T_wc_new(0, 3) << " " << T_wc_new(1, 3) << " " << T_wc_new(2, 3) << " ";
+        out_file << std::fixed << std::setprecision(6) << euler(0) << " " << euler(1) << " " << euler(2) << " " << std::endl;
 
         std::string img_path = img_dir + "/" + basename;
         cv::Mat img = cv::imread(img_path, cv::IMREAD_COLOR);
@@ -643,6 +678,28 @@ int main (int argc, char** argv) {
         out_file2 << std::endl;
     }
     out_file2.close();
+
+    while(1) {
+        std::vector<Eigen::Vector3d> world_points = sparse_map->getWorldPoints();
+        std::vector<std::vector<float>> world_points_f;
+        for (int i = 0; i < world_points.size(); i++) {
+            std::vector<float> pt = {world_points[i].x(), world_points[i].y(), world_points[i].z()};
+            world_points_f.push_back(pt);
+        }
+
+        server.showPointCloud("world_points", 1, world_points_f, {}, "ENU");
+
+        server.showPath("ins_path", 1, poses_prior, "ENU");
+
+        std::vector<Eigen::Matrix4f> poses_camera;
+        for (auto it = sparse_map->frame_map_.begin(); it != sparse_map->frame_map_.end(); ++it) {
+            Frame::Ptr frame = it->second;
+            poses_camera.push_back(frame->getBodyPose().cast<float>());
+        }
+        server.showPath("cam_path", 1, poses_camera, "ENU");
+
+        std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+    }
 
     return 0;
 }

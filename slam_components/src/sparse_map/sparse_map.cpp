@@ -1,12 +1,14 @@
 #include "sparse_map/sparse_map.h"
 #include "sparse_map/ceres_func.h"
+#include "sparse_map/matcher.h"
+#include "sparse_map/polygon2d.h"
 
 void SparseMap::addKeyFrame(
     const FrameIDType &id, const std::vector<cv::Mat> &imgs,
     const std::vector<std::vector<Eigen::Vector2d>> &keypoints,
     const std::vector<cv::Mat> &descriptors) {
   assert(imgs.size() == calibration_->camNum());
-  Frame::Ptr cur_frame(new Frame(id));
+  Frame::Ptr cur_frame(new Frame(id, calibration_->camNum()));
 
   std::vector<std::vector<Eigen::Vector3d>> bearings;
   for (int cam_id = 0; cam_id < calibration_->camNum(); ++cam_id) {
@@ -105,108 +107,89 @@ void SparseMap::addInterMatches(
     const std::vector<std::pair<int, int>> &stereo_ids,
     std::vector<std::vector<std::pair<int, int>>> inter_matches) {
   assert(stereo_ids.size() == inter_matches.size());
-  Frame::Ptr cur_frame = frame_map_[cur_frame_id];
 
-  for (size_t pair_id = 0; pair_id < inter_matches.size(); ++pair_id) {
+  for (size_t pair_id = 0; pair_id < stereo_ids.size(); ++pair_id) {
     int cam_id0 = stereo_ids[pair_id].first;
     int cam_id1 = stereo_ids[pair_id].second;
-    for (size_t match_id = 0; match_id < inter_matches[pair_id].size();
-         ++match_id) {
-      int left_pt_id = inter_matches[pair_id][match_id].first;
-      int right_pt_id = inter_matches[pair_id][match_id].second;
-    }
-  }
-
-  // ransac
-  if (use_ransac_) {
-    for (size_t pair_id = 0; pair_id < stereo_ids.size(); ++pair_id) {
-      int cam_id0 = stereo_ids[pair_id].first;
-      int cam_id1 = stereo_ids[pair_id].second;
-      ransacWithF(cur_frame_id, cam_id0, cur_frame_id, cam_id1,
-                  inter_matches[pair_id]);
-    }
-  }
-
-  // add observations (inter-frame)
-  for (size_t pair_id = 0; pair_id < inter_matches.size(); ++pair_id) {
-    int cam_id0 = stereo_ids[pair_id].first;
-    int cam_id1 = stereo_ids[pair_id].second;
-    for (size_t match_id = 0; match_id < inter_matches[pair_id].size();
-         ++match_id) {
-      int left_pt_id = inter_matches[pair_id][match_id].first;
-      int right_pt_id = inter_matches[pair_id][match_id].second;
-
-      Feature::Ptr left_feature, right_feature;
-      FeatureIDType left_ft_id = cur_frame->feature_ids()[cam_id0][left_pt_id];
-      FeatureIDType right_ft_id =
-          cur_frame->feature_ids()[cam_id1][right_pt_id];
-
-      if (left_ft_id < 0 && right_ft_id < 0) {
-        Feature::Ptr new_feature(new Feature(feature_next_id++));
-        feature_map_[new_feature->id()] = new_feature;
-        left_feature = new_feature;
-        right_feature = new_feature;
-      } else if (left_ft_id >= 0 && right_ft_id < 0) {
-        left_feature = feature_map_[left_ft_id];
-        right_feature = left_feature;
-      } else if (left_ft_id < 0 && right_ft_id >= 0) {
-        right_feature = feature_map_[right_ft_id];
-        left_feature = right_feature;
-      } else {
-        left_feature = feature_map_[left_ft_id];
-        right_feature = feature_map_[right_ft_id];
-      }
-
-      cur_frame->setFeatureID(cam_id0, left_pt_id, left_feature->id());
-      cur_frame->setFeatureID(cam_id1, right_pt_id, right_feature->id());
-      left_feature->addObservation(cur_frame_id, cam_id0, left_pt_id);
-      right_feature->addObservation(cur_frame_id, cam_id1, right_pt_id);
-      if (left_feature->id() != right_feature->id()) {
-        left_feature->addObservation(cur_frame_id, cam_id1, right_pt_id);
-        right_feature->addObservation(cur_frame_id, cam_id0, left_pt_id);
-      }
-    }
+    addMatches(cur_frame_id, cam_id0, cur_frame_id, cam_id1,
+               inter_matches[pair_id]);
   }
 }
 
 void SparseMap::addIntraMatches(
     const FrameIDType &pre_frame_id, const FrameIDType &cur_frame_id,
     std::vector<std::vector<std::pair<int, int>>> intra_matches) {
-  Frame::Ptr cur_frame = frame_map_[cur_frame_id];
-  Frame::Ptr pre_frame = frame_map_[pre_frame_id];
+
+  for (size_t cam_id = 0; cam_id < intra_matches.size(); ++cam_id) {
+    addMatches(pre_frame_id, cam_id, cur_frame_id, cam_id,
+               intra_matches[cam_id]);
+  }
+}
+
+void SparseMap::addMatches(const FrameIDType &left_frame_id,
+                           const int &left_cam_id,
+                           const FrameIDType &right_frame_id,
+                           const int &right_cam_id,
+                           std::vector<std::pair<int, int>> matches) {
+  Frame::Ptr right_frame = frame_map_[right_frame_id];
+  Frame::Ptr left_frame = frame_map_[left_frame_id];
+
+  // update matched frames
+  left_frame->matched_frames_[left_cam_id].insert(std::make_pair(right_frame_id, right_cam_id));
+  right_frame->matched_frames_[right_cam_id].insert(std::make_pair(left_frame_id, left_cam_id));
 
   // ransac
   if (use_ransac_) {
-    for (size_t cam_id = 0; cam_id < intra_matches.size(); ++cam_id) {
-      ransacWithF(pre_frame_id, cam_id, cur_frame_id, cam_id,
-                  intra_matches[cam_id]);
-    }
+    if (!ransacWithF(left_frame_id, left_cam_id, right_frame_id, right_cam_id, matches))
+      return;
   }
 
-  // add observations (intra-frame)
-  for (size_t cam_id = 0; cam_id < intra_matches.size(); ++cam_id) {
-    for (size_t match_id = 0; match_id < intra_matches[cam_id].size();
-         ++match_id) {
-      int pre_pt_id = intra_matches[cam_id][match_id].first;
-      int cur_pt_id = intra_matches[cam_id][match_id].second;
+  // add observations
+  for (size_t match_id = 0; match_id < matches.size(); ++match_id) {
+    const auto &match = matches[match_id];
+    int left_pt_id = match.first;
+    int right_pt_id = match.second;
 
-      Feature::Ptr feature;
+    Feature::Ptr feature;
 
-      FeatureIDType pre_ft_id = pre_frame->feature_ids()[cam_id][pre_pt_id];
-      if (pre_ft_id < 0) {
+    FeatureIDType left_ft_id =
+        left_frame->feature_ids()[left_cam_id][left_pt_id];
+    FeatureIDType right_ft_id =
+        right_frame->feature_ids()[right_cam_id][right_pt_id];
+    if (left_ft_id < 0) {
+      if (right_ft_id < 0) {
         Feature::Ptr new_feature(new Feature(feature_next_id++));
         feature_map_[new_feature->id()] = new_feature;
         feature = new_feature;
       } else {
-        feature = feature_map_[pre_ft_id];
+        feature = feature_map_[right_ft_id];
       }
-
-      pre_frame->setFeatureID(cam_id, pre_pt_id, feature->id());
-      cur_frame->setFeatureID(cam_id, cur_pt_id, feature->id());
-      feature->addObservation(pre_frame_id, cam_id, pre_pt_id);
-      feature->addObservation(cur_frame_id, cam_id, cur_pt_id);
+    } else {
+      if (right_ft_id < 0) {
+        feature = feature_map_[left_ft_id];
+      } else {
+        if (left_ft_id == right_ft_id) {
+          feature = feature_map_[left_ft_id];
+        } else {
+          Feature::Ptr left_feature = feature_map_[left_ft_id];
+          Feature::Ptr right_feature = feature_map_[right_ft_id];
+          if (left_feature->observationSize() >=
+              right_feature->observationSize()) {
+            feature = left_feature;
+          } else {
+            feature = right_feature;
+          }
+        }
+      }
     }
+
+    left_frame->setFeatureID(left_cam_id, left_pt_id, feature->id());
+    right_frame->setFeatureID(right_cam_id, right_pt_id, feature->id());
+    feature->addObservation(left_frame_id, left_cam_id, left_pt_id);
+    feature->addObservation(right_frame_id, right_cam_id, right_pt_id);
   }
+
+  
 }
 
 void SparseMap::updateKeyFramePose(const FrameIDType &id,
@@ -237,7 +220,6 @@ void SparseMap::triangulate() {
   for (auto it = frame_map_.begin(); it != frame_map_.end(); ++it) {
     Frame::Ptr frame = it->second;
     Eigen::Matrix4d pose = frame->getBodyPose();
-    frame->Tcw_.resize(frame->camNum());
     for (int cam_id = 0; cam_id < frame->camNum(); ++cam_id) {
       frame->Tcw_[cam_id] =
           (pose * calibration_->getCamera(cam_id).getExtrinsic()).inverse();
@@ -288,7 +270,6 @@ void SparseMap::triangulate2() {
   for (auto it = frame_map_.begin(); it != frame_map_.end(); ++it) {
     Frame::Ptr frame = it->second;
     Eigen::Matrix4d pose = frame->getBodyPose();
-    frame->Tcw_.resize(frame->camNum());
     for (int cam_id = 0; cam_id < frame->camNum(); ++cam_id) {
       frame->Tcw_[cam_id] =
           (pose * calibration_->getCamera(cam_id).getExtrinsic()).inverse();
@@ -352,14 +333,15 @@ std::vector<Eigen::Vector3d> SparseMap::getWorldPoints() {
   return world_points;
 }
 
-void SparseMap::ransacWithF(const FrameIDType &left_frame_id,
+bool SparseMap::ransacWithF(const FrameIDType &left_frame_id,
                             const int &left_cam_id,
                             const FrameIDType &right_frame_id,
                             const int &right_cam_id,
                             std::vector<std::pair<int, int>> &good_matches) {
-  if (good_matches.size() < 8) {
+  int MIN_MATCH_NUM = 8;
+  if (good_matches.size() < MIN_MATCH_NUM) {
     good_matches.clear();
-    return;
+    return false;
   }
 
   Frame::Ptr left_frame = frame_map_[left_frame_id];
@@ -399,20 +381,25 @@ void SparseMap::ransacWithF(const FrameIDType &left_frame_id,
       good_matches[inlier_num++] = good_matches[i];
 
   good_matches.resize(inlier_num);
+
+  if (good_matches.size() >= MIN_MATCH_NUM) {
+    return true;
+  } else {
+    good_matches.clear();
+    return false;
+  }
 }
 
 size_t SparseMap::getKeypointSize(const FrameIDType &f_id1, const int &c_id1) {
   return frame_map_[f_id1]->feature_ids()[c_id1].size();
 }
 
-bool SparseMap::bundleAdjustment(bool use_prior) {
+bool SparseMap::bundleAdjustment(bool use_prior, int opt_num) {
   ceres::Problem::Options problem_options;
   ceres::Problem problem(problem_options);
   ceres::LocalParameterization *q_para =
       new ceres::EigenQuaternionParameterization();
   ceres::LossFunction *loss_function = new ceres::HuberLoss(1);
-
-  std::cout << "pppp:" << frame_map_.size() << std::endl;
 
   for (auto it = frame_map_.begin(); it != frame_map_.end(); ++it) {
     Frame::Ptr frame = it->second;
@@ -420,25 +407,29 @@ bool SparseMap::bundleAdjustment(bool use_prior) {
     problem.AddParameterBlock(frame->getTranslationParams(), 3);
   }
 
-  std::cout << "pppp1" << std::endl;
-
   if (use_prior) {
     for (auto it = frame_map_.begin(); it != frame_map_.end(); ++it) {
       Frame::Ptr frame = it->second;
       ceres::CostFunction *cost_function =
-          PoseError::Create(frame->Twb_prior_, 0, 1);
+          PoseError::Create(frame->Twb_prior_, 10, 1);
       problem.AddResidualBlock(cost_function, NULL,
                                frame->getTranslationParams(),
                                frame->getRotaionParams());
     }
   }
-  // else {
-  //   Frame::Ptr first_frame = frame_map_.begin()->second;
-  //   problem.SetParameterBlockConstant(first_frame->pose_q);
-  //   problem.SetParameterBlockConstant(first_frame->twb_.data());
-  // }
+  else {
+    Frame::Ptr first_frame = frame_map_.begin()->second;
+    problem.SetParameterBlockConstant(first_frame->pose_q);
+    problem.SetParameterBlockConstant(first_frame->twb_.data());
+  }
 
-  std::cout << "pppp2" << std::endl;
+  double fx, fy, cx, cy;
+  std::vector<double> params =
+      calibration_->getCamera(0).getCameraModel().getParams();
+  fx = params[0];
+  fy = params[1];
+  cx = params[2];
+  cy = params[3];
 
   for (auto it = frame_map_.begin(); it != frame_map_.end(); ++it) {
     Frame::Ptr frame = it->second;
@@ -455,9 +446,8 @@ bool SparseMap::bundleAdjustment(bool use_prior) {
 
         problem.AddParameterBlock(feature->getWorldPointParams(), 2);
 
-        ceres::CostFunction *cost_function = PlaneReprojError::Create(
-            frame->keypoints()[cam_id][pt_id],
-            calibration_->getCamera(cam_id).getCameraModel());
+        ceres::CostFunction *cost_function = PinholeReprojError::Create(
+            frame->keypoints()[cam_id][pt_id], fx, fy, cx, cy);
         problem.AddResidualBlock(
             cost_function, loss_function, frame->getTranslationParams(),
             frame->getRotaionParams(), feature->getWorldPointParams());
@@ -465,17 +455,17 @@ bool SparseMap::bundleAdjustment(bool use_prior) {
     }
   }
 
-  std::cout << "pppp3" << std::endl;
-
   ceres::Solver::Options solver_options;
-  solver_options.minimizer_progress_to_stdout = true;
+  solver_options.minimizer_progress_to_stdout = false;
   solver_options.linear_solver_type = ceres::SPARSE_SCHUR;
   solver_options.trust_region_strategy_type = ceres::LEVENBERG_MARQUARDT;
   solver_options.num_threads = 8;
-  solver_options.max_num_iterations = 20;
+  solver_options.max_num_iterations = opt_num;
 
   ceres::Solver::Summary summary;
   ceres::Solve(solver_options, &problem, &summary);
+
+  // std::cout << summary.BriefReport() << std::endl;
 
   return true;
 }
@@ -829,10 +819,13 @@ cv::Mat SparseMap::drawReprojKeyPoint(FrameIDType frame_id, int cam_id) {
                            Tcw.block<3, 1>(0, 3);
     Eigen::Vector2d pt_2d2;
     camera.getCameraModel().spaceToPlane(pt_c, &pt_2d2);
+    Eigen::Vector2d pt_2d_obs = frame->keypoints()[cam_id][pt_id];
 
     cv::Point pt0 = cv::Point(pt_2d2(0), pt_2d2(1));
+    cv::Point pt0_obs = cv::Point(pt_2d_obs(0), pt_2d_obs(1));
 
     cv::circle(result, pt0, 2, cv::Scalar(255, 0, 0), 2);
+    cv::line(result, pt0, pt0_obs, cv::Scalar(0, 0, 255), 2);
     cv::putText(result, std::to_string(ft_id), pt0, cv::FONT_HERSHEY_SIMPLEX,
                 0.3, cv::Scalar(0, 255, 0), 1);
     num++;
@@ -846,4 +839,205 @@ cv::Mat SparseMap::drawReprojKeyPoint(FrameIDType frame_id, int cam_id) {
               cv::FONT_HERSHEY_SIMPLEX, 1, cv::Scalar(0, 255, 0), 2);
 
   return result;
+}
+
+void SparseMap::matchTwoFrames(const FrameIDType &f_id1, const int &c_id1,
+                               const FrameIDType &f_id2, const int &c_id2) {
+  if (frame_map_.find(f_id1) == frame_map_.end()) {
+    std::cerr << "Error: f_id1 not found" << std::endl;
+    return;
+  }
+
+  if (frame_map_.find(f_id2) == frame_map_.end()) {
+    std::cerr << "Error: f_id2 not found" << std::endl;
+    return;
+  }
+
+  Frame::Ptr frame1 = frame_map_[f_id1];
+  Frame::Ptr frame2 = frame_map_[f_id2];
+
+  const cv::Mat &descriptors1 = frame1->descriptors()[c_id1];
+  const cv::Mat &descriptors2 = frame2->descriptors()[c_id2];
+  std::vector<cv::DMatch> matches;
+  Matcher matcher;
+  matcher.matchORB(descriptors1, descriptors2, matches);
+
+  std::vector<std::pair<int, int>> matches_0;
+  for (int i = 0; i < matches.size(); i++) {
+    std::pair<int, int> match(matches[i].queryIdx, matches[i].trainIdx);
+    matches_0.push_back(match);
+  }
+
+  addMatches(f_id1, c_id1, f_id2, c_id2, matches_0);
+
+  // cv::Mat timg5 = drawMatches(f_id1, c_id1, f_id2, c_id2);
+  // cv::imwrite("../../../tmp/test/matches_" + std::to_string(f_id1) + "_" + std::to_string(c_id1) + "_" + std::to_string(f_id2) + "_" + std::to_string(c_id2) + ".png", timg5);
+}
+
+void SparseMap::matchLocalMap(const FrameIDType &f_id1, const int &c_id1) {
+  if (frame_map_.find(f_id1) == frame_map_.end()) {
+    std::cerr << "Error: f_id1 not found" << std::endl;
+    return;
+  }
+
+  Frame::Ptr curr_frame = frame_map_[f_id1];
+  int curr_cam_id = c_id1;
+
+  std::map<std::pair<int, int>, int> frame_matches;
+
+  std::set<std::pair<int, int>> local_frames;
+  for (int pt_id = 0; pt_id < curr_frame->feature_ids()[curr_cam_id].size(); ++pt_id) {
+    FeatureIDType ft_id = curr_frame->feature_ids()[curr_cam_id][pt_id];
+    if (ft_id < 0)
+      continue;
+
+    Feature::Ptr feature = feature_map_[ft_id];
+    for (const auto &obs : feature->observations()) {
+      FrameIDType frame_id = obs.first;
+      if (frame_id == f_id1)
+        continue;
+
+      for (const auto &cam_obs : obs.second) {
+        int cam_id = cam_obs.first;
+        if (local_frames.find(std::make_pair(frame_id, cam_id)) == local_frames.end())
+          local_frames.insert(std::make_pair(frame_id, cam_id));
+      }
+    }
+  }
+}
+
+void SparseMap::matchByPolyArea(const FrameIDType &f_id1, const int &c_id1) {
+  if (frame_map_.find(f_id1) == frame_map_.end()) {
+    std::cerr << "Error: f_id1 not found" << std::endl;
+    return;
+  }
+
+  auto genePoly = [this](const Frame::Ptr& frame, const int &cam_id) -> Polygon2D {
+    auto camera = calibration_->getCamera(cam_id);
+    auto camera_model = camera.getCameraModel();
+    Eigen::Matrix4d Twc = frame->getBodyPose() * camera.getExtrinsic();
+    Eigen::Vector3d twc = Twc.block<3, 1>(0, 3);
+    Eigen::Matrix3d Rwc = Twc.block<3, 3>(0, 0);
+
+    std::vector<Eigen::Vector2d> corner_points = camera_model.getCornerPoints();
+
+    Polygon2D poly;
+    for (int i = 0; i < corner_points.size(); ++i) {
+      Eigen::Vector3d bearing;
+      camera_model.planeToSpace(corner_points[i], &bearing);
+      Eigen::Vector3d bearing0 = Rwc * bearing.normalized();
+      double fi = -twc(2) / bearing0(2);
+      double x = twc(0) + fi * bearing0(0);
+      double y = twc(1) + fi * bearing0(1);
+
+      poly.addPoint(Point2D(x, y));
+    }
+
+    return poly;
+  };
+
+  Frame::Ptr curr_frame = frame_map_[f_id1];
+  int curr_cam_id = c_id1;
+
+  Polygon2D cur_poly = genePoly(curr_frame, curr_cam_id);
+  double cur_area = cur_poly.polygonArea();
+
+  int match_num = 0;
+  for (auto it = frame_map_.begin(); it != frame_map_.end(); ++it) {
+    Frame::Ptr frame = it->second;
+    for (int cam_id = 0; cam_id < frame->camNum(); ++cam_id) {
+      if (frame->id() == f_id1 && cam_id == c_id1)
+        continue;
+
+      if (curr_frame->matched_frames_[curr_cam_id].find(std::make_pair(frame->id(), cam_id)) != curr_frame->matched_frames_[curr_cam_id].end()) {
+        continue;
+      } 
+
+      Polygon2D poly = genePoly(frame, cam_id);
+      double area = poly.polygonArea();
+      
+      double common_area = polyIntersectionArea(cur_poly, poly);
+
+      if (common_area / area > 0.3 || common_area / cur_area > 0.3) {
+        matchTwoFrames(f_id1, c_id1, frame->id(), cam_id);
+        match_num++;
+      }
+    }
+  }
+}
+
+bool SparseMap::bundleAdjustment2(bool use_prior, int opt_num) {
+  ceres::Problem::Options problem_options;
+  ceres::Problem problem(problem_options);
+  ceres::LocalParameterization *q_para =
+      new ceres::EigenQuaternionParameterization();
+  ceres::LossFunction *loss_function = new ceres::HuberLoss(1);
+
+  for (auto it = frame_map_.begin(); it != frame_map_.end(); ++it) {
+    Frame::Ptr frame = it->second;
+    problem.AddParameterBlock(frame->getRotaionParams(), 4, q_para);
+    problem.AddParameterBlock(frame->getTranslationParams(), 3);
+  }
+
+  if (use_prior) {
+    for (auto it = frame_map_.begin(); it != frame_map_.end(); ++it) {
+      Frame::Ptr frame = it->second;
+      ceres::CostFunction *cost_function =
+          PoseError::Create(frame->Twb_prior_, 1, 1);
+      problem.AddResidualBlock(cost_function, NULL,
+                               frame->getTranslationParams(),
+                               frame->getRotaionParams());
+    }
+  }
+  else {
+    Frame::Ptr first_frame = frame_map_.begin()->second;
+    problem.SetParameterBlockConstant(first_frame->pose_q);
+    problem.SetParameterBlockConstant(first_frame->twb_.data());
+  }
+
+  double fx, fy, cx, cy;
+  std::vector<double> params =
+      calibration_->getCamera(0).getCameraModel().getParams();
+  fx = params[0];
+  fy = params[1];
+  cx = params[2];
+  cy = params[3];
+
+  for (auto it = frame_map_.begin(); it != frame_map_.end(); ++it) {
+    Frame::Ptr frame = it->second;
+    for (int cam_id = 0; cam_id < frame->camNum(); ++cam_id) {
+      for (int pt_id = 0; pt_id < frame->feature_ids()[cam_id].size();
+           ++pt_id) {
+        FeatureIDType ft_id = frame->feature_ids()[cam_id][pt_id];
+        if (ft_id < 0)
+          continue;
+
+        Feature::Ptr feature = feature_map_[ft_id];
+        if (!feature->isTriangulated())
+          continue;
+
+        problem.AddParameterBlock(feature->getWorldPointParams(), 3);
+
+        ceres::CostFunction *cost_function = PinholeReprojError2::Create(
+            frame->keypoints()[cam_id][pt_id], fx, fy, cx, cy);
+        problem.AddResidualBlock(
+            cost_function, loss_function, frame->getTranslationParams(),
+            frame->getRotaionParams(), feature->getWorldPointParams());
+      }
+    }
+  }
+
+  ceres::Solver::Options solver_options;
+  solver_options.minimizer_progress_to_stdout = false;
+  solver_options.linear_solver_type = ceres::SPARSE_SCHUR;
+  solver_options.trust_region_strategy_type = ceres::LEVENBERG_MARQUARDT;
+  solver_options.num_threads = 8;
+  solver_options.max_num_iterations = opt_num;
+
+  ceres::Solver::Summary summary;
+  ceres::Solve(solver_options, &problem, &summary);
+
+  // std::cout << summary.BriefReport() << std::endl;
+
+  return true;
 }

@@ -1,6 +1,16 @@
 #include "sparse_map/frame.h"
 #include "sparse_map/detector.h"
 
+Frame::Frame(FrameIDType _id, int _cam_num) : id_(_id) {
+  imgs_.resize(_cam_num);
+  keypoints_.resize(_cam_num);
+  feature_ids_.resize(_cam_num);
+  bearings_.resize(_cam_num);
+  descriptors_.resize(_cam_num);
+  matched_frames_.resize(_cam_num);
+  Tcw_.resize(_cam_num);
+}
+
 FrameIDType Frame::id() { return id_; }
 
 int Frame::camNum() { return keypoints_.size(); }
@@ -41,13 +51,14 @@ void Frame::addData(const std::vector<cv::Mat> &_imgs,
                     const std::vector<std::vector<Eigen::Vector3d>> &_bearings,
                     const std::vector<cv::Mat> &_descriptors) {
   if (_imgs.size()) {
-    imgs_.clear();
-    for (size_t i = 0; i < imgs_.size(); ++i) {
-      imgs_.push_back(_imgs[i].clone());
+    assert(_imgs.size() == camNum());
+    for (size_t i = 0; i < _imgs.size(); ++i) {
+      imgs_[i] = _imgs[i].clone();
     }
   }
 
   if (_keypoints.size()) {
+    assert(_keypoints.size() == camNum());
     keypoints_ = _keypoints;
     feature_ids_.resize(keypoints_.size());
     for (size_t i = 0; i < feature_ids_.size(); ++i) {
@@ -55,27 +66,26 @@ void Frame::addData(const std::vector<cv::Mat> &_imgs,
     }
   }
 
-  if (_bearings.size())
+  if (_bearings.size()) {
+    assert(_bearings.size() == camNum());
     bearings_ = _bearings;
+  }
 
-  if (_descriptors.size())
+  if (_descriptors.size()) {
+    assert(_descriptors.size() == camNum());
     descriptors_ = _descriptors;
+  }
 }
 
 void Frame::extractFeature(const std::vector<cv::Mat> &_imgs,
                            std::string detector_type,
                            const std::vector<cv::Mat> &_masks) {
+  assert(_imgs.size() == camNum());
   if (_masks.size()) {
     assert(_imgs.size() == _masks.size());
   }
 
-  int cam_num = _imgs.size();
-
-  keypoints_.resize(cam_num);
-  feature_ids_.resize(cam_num);
-  bearings_.resize(cam_num);
-  descriptors_.resize(cam_num);
-  imgs_.resize(cam_num);
+  int cam_num = camNum();
   for (size_t cam_id = 0; cam_id < cam_num; ++cam_id) {
     imgs_[cam_id] = _imgs[cam_id].clone();
   }
