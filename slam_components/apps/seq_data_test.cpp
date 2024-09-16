@@ -8,10 +8,10 @@
 #include "utils/log_utils.h"
 #include "sparse_map/sparse_map.h"
 #include "sparse_map/matcher.h"
+#include "sparse_map/dem.h"
 
 #include "foxglove/visualizer.h"
 #include "general_camera_model/function.hpp"
-#include "utils/log_utils.h"
 
 using namespace Eigen;
 
@@ -400,6 +400,11 @@ Eigen::Matrix4d getENUPose(const std::vector<double> &ins) {
     return T_wc;
 }
 
+DEM generateDEMByPlane(const std::vector<Eigen::Vector3d>& pointcloud, const std::vector<double>& plane_coefficients, double grid_resolution) {
+    DEM dem(grid_resolution, pointcloud);
+    dem.fillWithPlane(plane_coefficients);
+    return dem;
+}
 
 int main (int argc, char** argv) {
     Visualizer server(8088);
@@ -589,7 +594,7 @@ int main (int argc, char** argv) {
         kf_id_and_name[new_frame->id()] = basename;
     }
 
-    sparse_map->bundleAdjustment2(false, 100);
+    sparse_map->bundleAdjustment(false, 100);
 
     double all_time = time.toc();
     std::cout << "all time: " << all_time /1000 << " s" << std::endl;
@@ -621,6 +626,44 @@ int main (int argc, char** argv) {
     T_wc0.block(0, 0, 3, 3) = Omega2R(euler0);
 
     Eigen::Matrix4d T_wc0_inv = T_wc0.inverse();
+
+    std::vector<Eigen::Vector3d> points;
+    for (auto it = sparse_map->frame_map_.begin(); it != sparse_map->frame_map_.end(); ++it) {
+        Frame::Ptr frame = it->second;
+        auto camera = calib->getCamera(0);
+        auto camera_model = camera.getCameraModel();
+        Eigen::Matrix4d Twc = frame->getBodyPose() * camera.getExtrinsic();
+        Eigen::Vector3d twc = Twc.block<3, 1>(0, 3);
+        Eigen::Matrix3d Rwc = Twc.block<3, 3>(0, 0);
+
+        std::vector<Eigen::Vector2d> corner_points = camera_model.getCornerPoints();
+        for (int i = 0; i < corner_points.size(); ++i) {
+            Eigen::Vector3d bearing;
+            camera_model.planeToSpace(corner_points[i], &bearing);
+            Eigen::Vector3d bearing0 = Rwc * bearing.normalized();
+            double fi = -twc(2) / bearing0(2);
+            double x = twc(0) + fi * bearing0(0);
+            double y = twc(1) + fi * bearing0(1);
+            points.push_back(Eigen::Vector3d(x, y, 0));
+        }
+    }
+
+    std::vector<Eigen::Vector3d> new_points;
+    for (int i = 0; i < points.size(); i++) {
+        Eigen::Vector3d pt = points[i];
+        pt = T_wc0_inv.block(0, 0, 3, 3) * pt + T_wc0_inv.block(0, 3, 3, 1);
+        new_points.push_back(pt);
+    }
+
+    
+    Eigen::Vector3d normal(0, 0, 1);
+    Eigen::Vector3d new_normal = T_wc0_inv.block(0, 0, 3, 3) * normal;
+    Eigen::Vector3d new_center = T_wc0_inv.block(0, 3, 3, 1);
+    double new_d = - new_normal.dot(new_center);
+    std::vector<double> plane_coefficients = {new_normal.x(), new_normal.y(), new_normal.z(), new_d};
+
+    auto dem = generateDEMByPlane(new_points, plane_coefficients, 5);
+    dem.save("../../../datasets/TXPJ/test2/extract/dem.txt");
 
     index = 0;
     for (auto it = kf_id_and_name.begin(); it != kf_id_and_name.end(); it++) {

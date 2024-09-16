@@ -417,11 +417,11 @@ bool SparseMap::bundleAdjustment(bool use_prior, int opt_num) {
                                frame->getRotaionParams());
     }
   }
-  else {
-    Frame::Ptr first_frame = frame_map_.begin()->second;
-    problem.SetParameterBlockConstant(first_frame->pose_q);
-    problem.SetParameterBlockConstant(first_frame->twb_.data());
-  }
+  // else {
+  //   Frame::Ptr first_frame = frame_map_.begin()->second;
+  //   problem.SetParameterBlockConstant(first_frame->pose_q);
+  //   problem.SetParameterBlockConstant(first_frame->twb_.data());
+  // }
 
   double fx, fy, cx, cy;
   std::vector<double> params =
@@ -989,11 +989,11 @@ bool SparseMap::bundleAdjustment2(bool use_prior, int opt_num) {
                                frame->getRotaionParams());
     }
   }
-  else {
-    Frame::Ptr first_frame = frame_map_.begin()->second;
-    problem.SetParameterBlockConstant(first_frame->pose_q);
-    problem.SetParameterBlockConstant(first_frame->twb_.data());
-  }
+  // else {
+  //   Frame::Ptr first_frame = frame_map_.begin()->second;
+  //   problem.SetParameterBlockConstant(first_frame->pose_q);
+  //   problem.SetParameterBlockConstant(first_frame->twb_.data());
+  // }
 
   double fx, fy, cx, cy;
   std::vector<double> params =
