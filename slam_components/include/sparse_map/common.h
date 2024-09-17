@@ -13,6 +13,8 @@
 #include <opencv2/core/eigen.hpp>
 #include <opencv2/opencv.hpp>
 
+#include "utils/cereal_utils.h"
+
 #define DEFAULT_DEPTH 1.0
 
 typedef long long int FeatureIDType;

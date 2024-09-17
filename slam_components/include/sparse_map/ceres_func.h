@@ -27,7 +27,7 @@ struct PlaneReprojError {
     Eigen::Map<Vector2T> residual(residuals);
     Vector2T pt_rep;
     std::vector<double> cam_params = camera.getParams();
-    std::vector<T> cam_params_t(cam_params.begin(), cam_params.end()); 
+    std::vector<T> cam_params_t(cam_params.begin(), cam_params.end());
     camera.spaceToPlane(&cam_params_t[0], p_c, &pt_rep);
 
     residual = pt.template cast<T>() - pt_rep;
@@ -92,7 +92,7 @@ struct PinholeReprojError {
 struct PinholeReprojError2 {
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW
   PinholeReprojError2(const Eigen::Vector2d &_pt, const double &_fx,
-                     const double &_fy, const double &_cx, const double &_cy)
+                      const double &_fy, const double &_cx, const double &_cy)
       : pt(_pt), fx(_fx), fy(_fy), cx(_cx), cy(_cy) {}
 
   template <typename T>

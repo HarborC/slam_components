@@ -22,5 +22,11 @@ public:
 
 protected:
   general_camera_model::GeneralCameraModel camera_model_;
+
+public:
+  template <class Archive> void serialize(Archive &ar) {
+    ar(cereal::base_class<Sensor>(this),
+       cereal::make_nvp("camera_model", camera_model_));
+  }
 };
-typedef std::vector<Camera> CameraVec;
+typedef std::vector<Camera::Ptr> CameraPtrVec;

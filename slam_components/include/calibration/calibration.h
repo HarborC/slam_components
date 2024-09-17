@@ -12,12 +12,15 @@ public:
 
   size_t camNum() const { return camera_vec_.size(); }
 
-  void addCamera(const Camera &camera) { camera_vec_.push_back(camera); }
+  void addCamera(const Camera::Ptr &camera) { camera_vec_.push_back(camera); }
 
-  const Camera &getCamera(const size_t &cam_id) const {
-    return camera_vec_[cam_id];
-  }
+  Camera::Ptr getCamera(const size_t &cam_id) { return camera_vec_[cam_id]; }
 
 protected:
-  CameraVec camera_vec_;
+  CameraPtrVec camera_vec_;
+
+public:
+  template <class Archive> void serialize(Archive &ar) {
+    ar(cereal::make_nvp("camera_vec", camera_vec_));
+  }
 };

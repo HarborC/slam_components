@@ -8,9 +8,9 @@ public:
   using Ptr = std::shared_ptr<Frame>;
 
 public:
+  Frame() {}
   Frame(FrameIDType _id, int _cam_num);
-
-  virtual ~Frame() {}
+  ~Frame() {}
 
   FrameIDType id();
 
@@ -74,5 +74,63 @@ private:
   // Pose
   double pose_q[4]; // x, y, z, w (Rotation)
   double pose_t[3]; // x, y, z (Translation)
+
+private:
+  friend class cereal::access;
+
+  template <class Archive> void save(Archive &ar) const {
+    std::vector<double> pose_list;
+    for (int i = 0; i < 4; ++i)
+      pose_list.push_back(pose_q[i]);
+
+    for (int i = 0; i < 3; ++i)
+      pose_list.push_back(pose_t[i]);
+
+    std::vector<int> img_dims;
+    for (int i = 0; i < imgs_.size(); ++i) {
+      img_dims.push_back(imgs_[i].rows);
+      img_dims.push_back(imgs_[i].cols);
+      img_dims.push_back(imgs_[i].type());
+    }
+
+    ar(cereal::make_nvp("id", id_), cereal::make_nvp("keypoints", keypoints_),
+       cereal::make_nvp("bearings", bearings_),
+       cereal::make_nvp("descriptors", descriptors_),
+       cereal::make_nvp("feature_ids", feature_ids_),
+       cereal::make_nvp("pose", pose_list),
+       cereal::make_nvp("img_dims", img_dims),
+       cereal::make_nvp("Twb_prior", Twb_prior_),
+       cereal::make_nvp("matched_frames", matched_frames_));
+  }
+
+  template <class Archive> void load(Archive &ar) {
+    std::vector<double> pose_list;
+    std::vector<int> img_dims;
+
+    ar(cereal::make_nvp("id", id_), cereal::make_nvp("keypoints", keypoints_),
+       cereal::make_nvp("bearings", bearings_),
+       cereal::make_nvp("descriptors", descriptors_),
+       cereal::make_nvp("feature_ids", feature_ids_),
+       cereal::make_nvp("pose", pose_list),
+       cereal::make_nvp("img_dims", img_dims),
+       cereal::make_nvp("Twb_prior", Twb_prior_),
+       cereal::make_nvp("matched_frames", matched_frames_));
+
+    for (int i = 0; i < 4; ++i)
+      pose_q[i] = pose_list[i];
+
+    for (int i = 0; i < 3; ++i)
+      pose_t[i] = pose_list[i + 4];
+
+    int cam_num = keypoints_.size();
+    Tcw_.resize(cam_num);
+    imgs_.resize(cam_num);
+
+    for (int i = 0; i < cam_num; ++i) {
+      // initialize imgs_ as zero
+      imgs_[i] = cv::Mat::zeros(img_dims[i * 3], img_dims[i * 3 + 1],
+                                img_dims[i * 3 + 2]);
+    }
+  }
 };
 typedef std::map<FrameIDType, Frame::Ptr> FrameMap;

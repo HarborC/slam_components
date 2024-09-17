@@ -34,19 +34,19 @@ public:
 
   void removeFeature(const FeatureIDType &id);
 
-  void addMatches(const FrameIDType &left_frame_id,
-                  const int &left_cam_id,
-                  const FrameIDType &right_frame_id,
-                  const int &right_cam_id,
+  void addMatches(const FrameIDType &left_frame_id, const int &left_cam_id,
+                  const FrameIDType &right_frame_id, const int &right_cam_id,
                   std::vector<std::pair<int, int>> matches);
 
-  void addIntraMatches(const FrameIDType &pre_frame_id,
-                       const FrameIDType &cur_frame_id,
-                       std::vector<std::vector<std::pair<int, int>>> intra_matches);
+  void
+  addIntraMatches(const FrameIDType &pre_frame_id,
+                  const FrameIDType &cur_frame_id,
+                  std::vector<std::vector<std::pair<int, int>>> intra_matches);
 
-  void addInterMatches(const FrameIDType &cur_frame_id,
-                       const std::vector<std::pair<int, int>> &stereo_ids,
-                       std::vector<std::vector<std::pair<int, int>>> inter_matches);
+  void
+  addInterMatches(const FrameIDType &cur_frame_id,
+                  const std::vector<std::pair<int, int>> &stereo_ids,
+                  std::vector<std::vector<std::pair<int, int>>> inter_matches);
 
   void matchTwoFrames(const FrameIDType &f_id1, const int &c_id1,
                       const FrameIDType &f_id2, const int &c_id2);
@@ -114,4 +114,8 @@ public:
 
 protected:
   bool use_ransac_ = true;
+
+public:
+  void save(const std::string &path);
+  bool load(const std::string &path);
 };

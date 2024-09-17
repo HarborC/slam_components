@@ -34,13 +34,12 @@ void Polygon2D::removeDuplicates() {
                 return a.x() < b.x();
               return a.y() < b.y();
             });
-  points_.erase(
-      unique(points_.begin(), points_.end(),
-             [](const Point2D &a, const Point2D &b) {
-               return std::fabs(a.x() - b.x()) < 1e-8 &&
-                      std::fabs(a.y() - b.y()) < 1e-8;
-             }),
-      points_.end());
+  points_.erase(unique(points_.begin(), points_.end(),
+                       [](const Point2D &a, const Point2D &b) {
+                         return std::fabs(a.x() - b.x()) < 1e-8 &&
+                                std::fabs(a.y() - b.y()) < 1e-8;
+                       }),
+                points_.end());
 }
 
 // Sort points by angle around centroid
@@ -66,9 +65,8 @@ void Polygon2D::sortPoints() {
 }
 
 // Check if segments AB and CD intersect and find intersection point
-bool segmentIntersect(const Point2D &A, const Point2D &B,
-                      const Point2D &C, const Point2D &D,
-                      Point2D &intersection) {
+bool segmentIntersect(const Point2D &A, const Point2D &B, const Point2D &C,
+                      const Point2D &D, Point2D &intersection) {
   double a1 = B.y() - A.y();
   double b1 = A.x() - B.x();
   double c1 = a1 * A.x() + b1 * A.y();
@@ -82,10 +80,14 @@ bool segmentIntersect(const Point2D &A, const Point2D &B,
   } else {
     double x = (b2 * c1 - b1 * c2) / determinant;
     double y = (a1 * c2 - a2 * c1) / determinant;
-    if (std::min(A.x(), B.x()) - 1e-10 <= x && x <= std::max(A.x(), B.x()) + 1e-10 &&
-        std::min(A.y(), B.y()) - 1e-10 <= y && y <= std::max(A.y(), B.y()) + 1e-10 &&
-        std::min(C.x(), D.x()) - 1e-10 <= x && x <= std::max(C.x(), D.x()) + 1e-10 &&
-        std::min(C.y(), D.y()) - 1e-10 <= y && y <= std::max(C.y(), D.y()) + 1e-10) {
+    if (std::min(A.x(), B.x()) - 1e-10 <= x &&
+        x <= std::max(A.x(), B.x()) + 1e-10 &&
+        std::min(A.y(), B.y()) - 1e-10 <= y &&
+        y <= std::max(A.y(), B.y()) + 1e-10 &&
+        std::min(C.x(), D.x()) - 1e-10 <= x &&
+        x <= std::max(C.x(), D.x()) + 1e-10 &&
+        std::min(C.y(), D.y()) - 1e-10 <= y &&
+        y <= std::max(C.y(), D.y()) + 1e-10) {
       intersection = Point2D(x, y);
       return true;
     }

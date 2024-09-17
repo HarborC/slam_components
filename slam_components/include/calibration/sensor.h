@@ -2,7 +2,7 @@
 
 #include "calibration/common.h"
 
-enum SensorType { None, ImuSensor, LidarSensor, CameraSensor };
+enum SensorType { None = 0, ImuSensor = 1, LidarSensor = 2, CameraSensor = 3 };
 
 class Sensor {
 public:
@@ -19,5 +19,11 @@ public:
 protected:
   SensorType type_ = SensorType::None;
   Eigen::Matrix4d extrinsic_ = Eigen::Matrix4d::Identity();
+
+public:
+  template <class Archive> void serialize(Archive &ar) {
+    ar(cereal::make_nvp("type", type_),
+       cereal::make_nvp("extrinsic", extrinsic_));
+  }
 };
 typedef std::vector<Sensor> SensorVec;

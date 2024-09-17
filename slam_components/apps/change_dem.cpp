@@ -12,8 +12,8 @@
 
 int main (int argc, char** argv) {
     DEM dem;
-    dem.load("../../../datasets/TXPJ/test2/extract/dem.txt");
-    dem.save("../../../datasets/TXPJ/test2/extract/dem3.txt");
+    dem.loadFromArcGrid("../../../datasets/TXPJ/test2/extract/dem.txt");
+    dem.saveAsArcGrid("../../../datasets/TXPJ/test2/extract/dem3.txt");
     dem.save2("../../../datasets/TXPJ/test2/extract/dem2.bin");
     return 0;
 }

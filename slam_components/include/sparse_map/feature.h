@@ -8,8 +8,8 @@ public:
   using Ptr = std::shared_ptr<Feature>;
 
 public:
+  Feature() {}
   Feature(const FeatureIDType &_id);
-
   ~Feature() {}
 
   FeatureIDType id() { return id_; }
@@ -68,8 +68,8 @@ private:
   std::vector<FrameIDType> frame_ids_;
 
   // reference frame id
-  FrameIDType ref_frame_id_;
-  int ref_cam_id_;
+  FrameIDType ref_frame_id_ = -1;
+  int ref_cam_id_ = -1;
 
   // inv_depth_ and world_point_
   double inv_depth_ = -1.0;
@@ -77,5 +77,19 @@ private:
 
   //   bool is_stereo = false;
   //   int tracked_num = 0;
+
+private:
+  friend class cereal::access;
+
+  template <class Archive> void serialize(Archive &ar) {
+    ar(cereal::make_nvp("id", id_),
+       cereal::make_nvp("observations", observations_),
+       cereal::make_nvp("observation_size", observation_size_),
+       cereal::make_nvp("frame_ids", frame_ids_),
+       cereal::make_nvp("ref_frame_id", ref_frame_id_),
+       cereal::make_nvp("ref_cam_id", ref_cam_id_),
+       cereal::make_nvp("inv_depth", inv_depth_),
+       cereal::make_nvp("world_point", world_point_));
+  }
 };
 typedef std::unordered_map<FeatureIDType, Feature::Ptr> FeatureMap;

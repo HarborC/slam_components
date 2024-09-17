@@ -373,4 +373,4 @@ inline void appendSpaceToBits(std::string &in_str, int bits) {
   }
 }
 
-}
+} // namespace Utils
