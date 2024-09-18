@@ -825,6 +825,8 @@ cv::Mat SparseMap::drawReprojKeyPoint(FrameIDType frame_id, int cam_id) {
     cv::Point pt0 = cv::Point(pt_2d2(0), pt_2d2(1));
     cv::Point pt0_obs = cv::Point(pt_2d_obs(0), pt_2d_obs(1));
 
+    // std::cout << "pt0: " << pt0 << " pt0_obs: " << pt0_obs << " diff:" << pt0 - pt0_obs << std::endl;
+
     cv::circle(result, pt0, 2, cv::Scalar(255, 0, 0), 2);
     cv::line(result, pt0, pt0_obs, cv::Scalar(0, 0, 255), 2);
     cv::putText(result, std::to_string(ft_id), pt0, cv::FONT_HERSHEY_SIMPLEX,

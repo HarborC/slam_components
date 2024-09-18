@@ -55,6 +55,11 @@ class SparseMapGui:
                 "Next Frame View", hint="Set the camera view to the next frame",
             )
         self.gui_upload_button = self.server.gui.add_upload_button("Upload map file")
+
+        self.gui_log_clear = self.server.gui.add_button("Clear Log", hint="Clear the log")
+
+        self.gui_log = self.server.gui.add_markdown("")
+
         self.attach_gui_callbacks()
 
     def attach_gui_callbacks(self):
@@ -85,6 +90,10 @@ class SparseMapGui:
         def _(_) -> None:
             file = self.gui_upload_button.value
             print(f"Uploaded file: {file.name}, size: {len(file.content)} bytes")
+
+        @self.gui_log_clear.on_click
+        def _(_) -> None:
+            self.gui_log.content = ""
 
     def update_info_panel(self):
         """Update the information panel with current data."""
@@ -142,6 +151,7 @@ class SparseMapGui:
             go_to = client.gui.add_button("Go to")
             feature_img = client.gui.add_button("Show Features")
             reproj_img = client.gui.add_button("Show Reproject Image")
+            feature_text = client.gui.add_button("Show Features In Text")
             close = client.gui.add_button("Close")
 
         @go_to.on_click
@@ -165,6 +175,12 @@ class SparseMapGui:
             fig = px.imshow(img)
             fig.update_layout(title=f"Feature Reprojection ({frame_id}/{cam_id})", margin=dict(l=20, r=20))
             self.displayed_reproj = self.server.gui.add_plotly(figure=fig, aspect=1.0)
+
+        @feature_text.on_click
+        def _(_) -> None:
+            keypoints = self.map.get_frame(frame_id).keypoints()[cam_id]
+            str_keypoints = "\n".join([f"{kp[0]:.2f}, {kp[1]:.2f}\n" for kp in keypoints])
+            self.gui_log.content = str_keypoints
 
         @close.on_click
         def _(_) -> None:
