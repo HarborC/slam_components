@@ -15,7 +15,7 @@ public:
       : calibration_(calibration), use_ransac_(use_ransac) {}
   ~SparseMap() {
     clear();
-    std::cout << "SparseMap is destructed" << std::endl;
+    // std::cout << "SparseMap is destructed" << std::endl;
   }
 
   void clear() {

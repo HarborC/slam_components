@@ -282,11 +282,9 @@ class SparseMapGui:
             self.update()
             time.sleep(0.1)
 
-
 def main(map_file) -> None:
     gui = SparseMapGui()
     gui.run(map_file)
-
 
 if __name__ == "__main__":
     map_file = "/mnt/i/project/slam/datasets/TXPJ/test2/extract/sparse_map.bin"
