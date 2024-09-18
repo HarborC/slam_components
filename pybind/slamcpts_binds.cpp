@@ -59,13 +59,7 @@ PYBIND11_MODULE(pyslamcpts, m) {
            py::arg("_descriptors") = std::vector<cv::Mat>())
       .def("extract_feature", &Frame::extractFeature, "extract feature",
            py::arg("_imgs"), py::arg("detector_type") = "ORB",
-           py::arg("_masks") = std::vector<cv::Mat>())
-      .def("draw_keypoint", &Frame::drawKeyPoint, "draw keypoint",
-           py::arg("cam_id"))
-      .def("draw_matched_keypoint", &Frame::drawMatchedKeyPoint,
-           "draw matched keypoint", py::arg("cam_id"))
-      .def("draw_reproj_keypoint", &Frame::drawReprojKeyPoint,
-           "draw reprojected keypoint", py::arg("cam_id"));
+           py::arg("_masks") = std::vector<cv::Mat>());
 
   py::class_<Feature, Feature::Ptr>(m, "Feature")
       .def(py::init<>())
@@ -131,6 +125,15 @@ PYBIND11_MODULE(pyslamcpts, m) {
       .def("add_inter_matches", &SparseMap::addInterMatches,
            "add inter matches to the sparse map", py::arg("cur_frame_id"),
            py::arg("stereo_ids"), py::arg("inter_matches"))
+      .def("match_two_frames", &SparseMap::matchTwoFrames,
+           "match two frames in the sparse map", py::arg("f_id1"),
+           py::arg("c_id1"), py::arg("f_id2"), py::arg("c_id2"))
+      .def("match_local_map", &SparseMap::matchLocalMap,
+           "match local map in the sparse map", py::arg("f_id1"),
+           py::arg("c_id1"))
+      .def("match_by_poly_area", &SparseMap::matchByPolyArea,
+           "match by poly area in the sparse map", py::arg("f_id1"),
+           py::arg("c_id1"))
       .def("update_keyframe_pose", &SparseMap::updateKeyFramePose,
            "update key frame pose in the sparse map", py::arg("id"),
            py::arg("pose"))
@@ -161,6 +164,14 @@ PYBIND11_MODULE(pyslamcpts, m) {
            "get keypoint size of the frame", py::arg("f_id1"), py::arg("c_id1"))
       .def("get_frame", &SparseMap::getFrame, "get frame from the sparse map",
            py::arg("id"))
+      .def("get_feature", &SparseMap::getFeature,
+           "get feature from the sparse map", py::arg("id"))
       .def("get_world_points", &SparseMap::getWorldPoints,
-           "get world points of the sparse map");
+           "get world points of the sparse map")
+      .def("get_frame_ids", &SparseMap::getFrameIDs,
+           "get frame ids of the sparse map")
+      .def("get_feature_ids", &SparseMap::getFeatureIDs,
+           "get feature ids of the sparse map")
+      .def("get_calibration", &SparseMap::getCalibration,
+           "get calibration of the sparse map");
 }

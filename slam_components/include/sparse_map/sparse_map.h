@@ -79,9 +79,17 @@ public:
 
   size_t getKeypointSize(const FrameIDType &f_id1, const int &c_id1);
 
+  std::vector<Eigen::Vector3d> getWorldPoints();
+
   Frame::Ptr getFrame(const FrameIDType &id) { return frame_map_[id]; }
 
-  std::vector<Eigen::Vector3d> getWorldPoints();
+  Feature::Ptr getFeature(const FeatureIDType &id) { return feature_map_[id]; }
+
+  std::vector<FrameIDType> getFrameIDs();
+
+  std::vector<FeatureIDType> getFeatureIDs();
+
+  Calibration::Ptr getCalibration() { return calibration_; }
 
 public:
   cv::Mat drawKeyPoint(FrameIDType frame_id, int cam_id);

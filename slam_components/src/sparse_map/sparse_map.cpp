@@ -1079,3 +1079,19 @@ bool SparseMap::load(const std::string &path) {
           cereal::make_nvp("use_ransac", use_ransac_));
   return true;
 }
+
+std::vector<FrameIDType> SparseMap::getFrameIDs() {
+  std::vector<FrameIDType> frame_ids;
+  for (auto it = frame_map_.begin(); it != frame_map_.end(); ++it) {
+    frame_ids.push_back(it->first);
+  }
+  return frame_ids;
+}
+
+std::vector<FeatureIDType> SparseMap::getFeatureIDs() {
+  std::vector<FeatureIDType> feature_ids;
+  for (auto it = feature_map_.begin(); it != feature_map_.end(); ++it) {
+    feature_ids.push_back(it->first);
+  }
+  return feature_ids;
+}
