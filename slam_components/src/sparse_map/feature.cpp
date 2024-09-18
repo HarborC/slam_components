@@ -61,7 +61,7 @@ void Feature::removeObservationByFrameId(const FrameIDType &frame_id) {
     std::remove(frame_ids_.begin(), frame_ids_.end(), frame_id);
 
     if (observation_size_) {
-      refUpdate();
+      refInfoUpdate();
     }
   }
 }
@@ -70,7 +70,7 @@ int Feature::coVisFrameSize() { return frame_ids_.size(); }
 
 int Feature::observationSize() { return observation_size_; }
 
-void Feature::refUpdate() {
+void Feature::refInfoUpdate() {
   sort(frame_ids_.begin(), frame_ids_.end());
 
   // find the reference frame

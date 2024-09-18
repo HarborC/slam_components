@@ -12,6 +12,8 @@ public:
 public:
   Sensor();
 
+  int type() const;
+
   Eigen::Matrix4d getExtrinsic() const;
 
   void setExtrinsic(const Eigen::Matrix4d &_extrinsic);
@@ -20,7 +22,8 @@ protected:
   SensorType type_ = SensorType::None;
   Eigen::Matrix4d extrinsic_ = Eigen::Matrix4d::Identity();
 
-public:
+private:
+  friend class cereal::access;
   template <class Archive> void serialize(Archive &ar) {
     ar(cereal::make_nvp("type", type_),
        cereal::make_nvp("extrinsic", extrinsic_));

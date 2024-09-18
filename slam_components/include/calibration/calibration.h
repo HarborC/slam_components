@@ -19,7 +19,8 @@ public:
 protected:
   CameraPtrVec camera_vec_;
 
-public:
+private:
+  friend class cereal::access;
   template <class Archive> void serialize(Archive &ar) {
     ar(cereal::make_nvp("camera_vec", camera_vec_));
   }

@@ -28,16 +28,12 @@ public:
 
   const std::vector<cv::Mat> &descriptors() const { return descriptors_; }
 
-  const std::vector<std::vector<FeatureIDType>> &feature_ids() {
+  const std::vector<std::vector<FeatureIDType>> &featureIDs() {
     return feature_ids_;
   }
 
   void setFeatureID(const int &cam_id, const int &pt_id,
                     const FeatureIDType &ft_id);
-
-  double *getRotaionParams();
-
-  double *getTranslationParams();
 
   Eigen::Matrix4d getBodyPose();
 
@@ -57,6 +53,10 @@ public:
   cv::Mat drawMatchedKeyPoint(const int &cam_id);
 
   cv::Mat drawReprojKeyPoint(const int &cam_id);
+
+  double *getRotaionParams();
+
+  double *getTranslationParams();
 
 public:
   Eigen::Matrix4d Twb_prior_;

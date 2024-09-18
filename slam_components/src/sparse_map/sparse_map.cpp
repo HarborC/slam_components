@@ -61,10 +61,10 @@ void SparseMap::removeKeyFrame(const FrameIDType &id) {
   }
 
   Frame::Ptr cur_frame = frame_map_[id];
-  for (int cam_id = 0; cam_id < cur_frame->feature_ids().size(); ++cam_id) {
-    for (int pt_id = 0; pt_id < cur_frame->feature_ids()[cam_id].size();
+  for (int cam_id = 0; cam_id < cur_frame->featureIDs().size(); ++cam_id) {
+    for (int pt_id = 0; pt_id < cur_frame->featureIDs()[cam_id].size();
          ++pt_id) {
-      FeatureIDType ft_id = cur_frame->feature_ids()[cam_id][pt_id];
+      FeatureIDType ft_id = cur_frame->featureIDs()[cam_id][pt_id];
       if (ft_id < 0)
         continue;
       Feature::Ptr feature = feature_map_[ft_id];
@@ -156,9 +156,9 @@ void SparseMap::addMatches(const FrameIDType &left_frame_id,
     Feature::Ptr feature;
 
     FeatureIDType left_ft_id =
-        left_frame->feature_ids()[left_cam_id][left_pt_id];
+        left_frame->featureIDs()[left_cam_id][left_pt_id];
     FeatureIDType right_ft_id =
-        right_frame->feature_ids()[right_cam_id][right_pt_id];
+        right_frame->featureIDs()[right_cam_id][right_pt_id];
     if (left_ft_id < 0) {
       if (right_ft_id < 0) {
         Feature::Ptr new_feature(new Feature(feature_next_id++));
@@ -392,7 +392,7 @@ bool SparseMap::ransacWithF(const FrameIDType &left_frame_id,
 }
 
 size_t SparseMap::getKeypointSize(const FrameIDType &f_id1, const int &c_id1) {
-  return frame_map_[f_id1]->feature_ids()[c_id1].size();
+  return frame_map_[f_id1]->featureIDs()[c_id1].size();
 }
 
 bool SparseMap::bundleAdjustment(bool use_prior, int opt_num) {
@@ -435,9 +435,9 @@ bool SparseMap::bundleAdjustment(bool use_prior, int opt_num) {
   for (auto it = frame_map_.begin(); it != frame_map_.end(); ++it) {
     Frame::Ptr frame = it->second;
     for (int cam_id = 0; cam_id < frame->camNum(); ++cam_id) {
-      for (int pt_id = 0; pt_id < frame->feature_ids()[cam_id].size();
+      for (int pt_id = 0; pt_id < frame->featureIDs()[cam_id].size();
            ++pt_id) {
-        FeatureIDType ft_id = frame->feature_ids()[cam_id][pt_id];
+        FeatureIDType ft_id = frame->featureIDs()[cam_id][pt_id];
         if (ft_id < 0)
           continue;
 
@@ -480,7 +480,7 @@ SparseMap::getMatches(const FrameIDType &f_id1, const int &c_id1,
   std::vector<std::pair<size_t, size_t>> matches;
 
   for (int pt_id1 = 0; pt_id1 < frame1->keypoints()[c_id1].size(); pt_id1++) {
-    FeatureIDType ft_id1 = frame1->feature_ids()[c_id1][pt_id1];
+    FeatureIDType ft_id1 = frame1->featureIDs()[c_id1][pt_id1];
     if (ft_id1 < 0)
       continue;
 
@@ -493,7 +493,7 @@ SparseMap::getMatches(const FrameIDType &f_id1, const int &c_id1,
       continue;
 
     int pt_id2 = obs2.at(c_id2);
-    FeatureIDType ft_id2 = frame2->feature_ids()[c_id2][pt_id2];
+    FeatureIDType ft_id2 = frame2->featureIDs()[c_id2][pt_id2];
     if (ft_id2 < 0) {
       std::cerr << "Error: ft_id2 < 0" << std::endl;
       continue;
@@ -516,7 +516,7 @@ SparseMap::getCorrespondences2D2D(const FrameIDType &f_id1, const int &c_id1,
   std::vector<std::pair<Eigen::Vector3d, Eigen::Vector3d>> corres;
 
   for (int pt_id1 = 0; pt_id1 < frame1->keypoints()[c_id1].size(); pt_id1++) {
-    FeatureIDType ft_id1 = frame1->feature_ids()[c_id1][pt_id1];
+    FeatureIDType ft_id1 = frame1->featureIDs()[c_id1][pt_id1];
     if (ft_id1 < 0)
       continue;
 
@@ -529,7 +529,7 @@ SparseMap::getCorrespondences2D2D(const FrameIDType &f_id1, const int &c_id1,
       continue;
 
     int pt_id2 = obs2.at(c_id2);
-    FeatureIDType ft_id2 = frame2->feature_ids()[c_id2][pt_id2];
+    FeatureIDType ft_id2 = frame2->featureIDs()[c_id2][pt_id2];
     if (ft_id2 < 0) {
       std::cerr << "Error: ft_id2 < 0" << std::endl;
       continue;
@@ -551,7 +551,7 @@ SparseMap::getCorrespondences2D3D(const FrameIDType &f_id1, const int &c_id1) {
   std::vector<std::pair<Eigen::Vector3d, Eigen::Vector3d>> corres;
 
   for (int pt_id1 = 0; pt_id1 < frame1->keypoints()[c_id1].size(); pt_id1++) {
-    FeatureIDType ft_id1 = frame1->feature_ids()[c_id1][pt_id1];
+    FeatureIDType ft_id1 = frame1->featureIDs()[c_id1][pt_id1];
     if (ft_id1 < 0)
       continue;
 
@@ -573,7 +573,7 @@ void SparseMap::printReprojError(const FrameIDType &f_id1, const int &c_id1) {
       (frame1->getBodyPose() * camera->getExtrinsic()).inverse();
 
   for (int pt_id1 = 0; pt_id1 < frame1->keypoints()[c_id1].size(); pt_id1++) {
-    FeatureIDType ft_id1 = frame1->feature_ids()[c_id1][pt_id1];
+    FeatureIDType ft_id1 = frame1->featureIDs()[c_id1][pt_id1];
     if (ft_id1 < 0)
       continue;
 
@@ -592,7 +592,7 @@ void SparseMap::printReprojError(const FrameIDType &f_id1, const int &c_id1) {
   }
 }
 
-cv::Mat SparseMap::drawKeypoint(FrameIDType frame_id, int cam_id) {
+cv::Mat SparseMap::drawKeyPoint(FrameIDType frame_id, int cam_id) {
   if (frame_map_.find(frame_id) == frame_map_.end()) {
     std::cerr << "Error: frame_id not found" << std::endl;
     return cv::Mat();
@@ -647,8 +647,8 @@ cv::Mat SparseMap::drawFlow(FrameIDType frame_id, int cam_id,
   Frame::Ptr pre_frame = frame_map_[pre_frame_id];
 
   int num = 0;
-  for (int pt_id = 0; pt_id < frame->feature_ids()[cam_id].size(); ++pt_id) {
-    FeatureIDType ft_id = frame->feature_ids()[cam_id][pt_id];
+  for (int pt_id = 0; pt_id < frame->featureIDs()[cam_id].size(); ++pt_id) {
+    FeatureIDType ft_id = frame->featureIDs()[cam_id][pt_id];
     if (ft_id < 0)
       continue;
 
@@ -657,7 +657,7 @@ cv::Mat SparseMap::drawFlow(FrameIDType frame_id, int cam_id,
     if (pt_id1 < 0)
       continue;
 
-    FeatureIDType ft_id1 = pre_frame->feature_ids()[cam_id][pt_id1];
+    FeatureIDType ft_id1 = pre_frame->featureIDs()[cam_id][pt_id1];
     if (ft_id1 < 0) {
       std::cerr << "Error: ft_id1 < 0" << std::endl;
       continue;
@@ -709,9 +709,9 @@ cv::Mat SparseMap::drawMatches(FrameIDType frame_id0, int cam_id0,
   img1.copyTo(merge_img(cv::Rect(img0.cols, 0, img1.cols, img1.rows)));
   cv::Point offset(img0.cols, 0);
 
-  for (int pt_id0 = 0; pt_id0 < frame0->feature_ids()[cam_id0].size();
+  for (int pt_id0 = 0; pt_id0 < frame0->featureIDs()[cam_id0].size();
        pt_id0++) {
-    FeatureIDType ft_id0 = frame0->feature_ids()[cam_id0][pt_id0];
+    FeatureIDType ft_id0 = frame0->featureIDs()[cam_id0][pt_id0];
     if (ft_id0 < 0)
       continue;
 
@@ -720,7 +720,7 @@ cv::Mat SparseMap::drawMatches(FrameIDType frame_id0, int cam_id0,
     if (pt_id1 < 0)
       continue;
 
-    FeatureIDType ft_id1 = frame1->feature_ids()[cam_id1][pt_id1];
+    FeatureIDType ft_id1 = frame1->featureIDs()[cam_id1][pt_id1];
     if (ft_id1 < 0) {
       std::cerr << "Error: ft_id1 < 0" << std::endl;
       continue;
@@ -767,8 +767,8 @@ cv::Mat SparseMap::drawStereoKeyPoint(FrameIDType frame_id) {
   }
 
   for (size_t cam_id = 0; cam_id < frame->camNum(); ++cam_id) {
-    for (size_t j = 0; j < frame->feature_ids()[cam_id].size(); ++j) {
-      FeatureIDType ft_id = frame->feature_ids()[cam_id][j];
+    for (size_t j = 0; j < frame->featureIDs()[cam_id].size(); ++j) {
+      FeatureIDType ft_id = frame->featureIDs()[cam_id][j];
       if (ft_id < 0)
         continue;
 
@@ -809,8 +809,8 @@ cv::Mat SparseMap::drawReprojKeyPoint(FrameIDType frame_id, int cam_id) {
   }
 
   int num = 0;
-  for (int pt_id = 0; pt_id < frame->feature_ids()[cam_id].size(); ++pt_id) {
-    FeatureIDType ft_id = frame->feature_ids()[cam_id][pt_id];
+  for (int pt_id = 0; pt_id < frame->featureIDs()[cam_id].size(); ++pt_id) {
+    FeatureIDType ft_id = frame->featureIDs()[cam_id][pt_id];
     if (ft_id < 0)
       continue;
 
@@ -889,9 +889,9 @@ void SparseMap::matchLocalMap(const FrameIDType &f_id1, const int &c_id1) {
   std::map<std::pair<int, int>, int> frame_matches;
 
   std::set<std::pair<int, int>> local_frames;
-  for (int pt_id = 0; pt_id < curr_frame->feature_ids()[curr_cam_id].size();
+  for (int pt_id = 0; pt_id < curr_frame->featureIDs()[curr_cam_id].size();
        ++pt_id) {
-    FeatureIDType ft_id = curr_frame->feature_ids()[curr_cam_id][pt_id];
+    FeatureIDType ft_id = curr_frame->featureIDs()[curr_cam_id][pt_id];
     if (ft_id < 0)
       continue;
 
@@ -1014,9 +1014,9 @@ bool SparseMap::bundleAdjustment2(bool use_prior, int opt_num) {
   for (auto it = frame_map_.begin(); it != frame_map_.end(); ++it) {
     Frame::Ptr frame = it->second;
     for (int cam_id = 0; cam_id < frame->camNum(); ++cam_id) {
-      for (int pt_id = 0; pt_id < frame->feature_ids()[cam_id].size();
+      for (int pt_id = 0; pt_id < frame->featureIDs()[cam_id].size();
            ++pt_id) {
-        FeatureIDType ft_id = frame->feature_ids()[cam_id][pt_id];
+        FeatureIDType ft_id = frame->featureIDs()[cam_id][pt_id];
         if (ft_id < 0)
           continue;
 

@@ -39,7 +39,7 @@ public:
 
   int observationSize();
 
-  void refUpdate();
+  void refInfoUpdate();
 
   bool isTriangulated();
 

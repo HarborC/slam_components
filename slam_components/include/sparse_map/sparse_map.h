@@ -10,6 +10,7 @@ public:
   using Ptr = std::shared_ptr<SparseMap>;
 
 public:
+  SparseMap() {}
   SparseMap(const Calibration::Ptr &calibration, bool use_ransac = true)
       : calibration_(calibration), use_ransac_(use_ransac) {}
   ~SparseMap() {
@@ -83,7 +84,7 @@ public:
   std::vector<Eigen::Vector3d> getWorldPoints();
 
 public:
-  cv::Mat drawKeypoint(FrameIDType frame_id, int cam_id);
+  cv::Mat drawKeyPoint(FrameIDType frame_id, int cam_id);
 
   cv::Mat drawMatchedKeypoint(FrameIDType frame_id, int cam_id);
 
