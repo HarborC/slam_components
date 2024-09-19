@@ -5,7 +5,6 @@ echo "BASE_DIR: ${BASE_DIR}"
 
 cd ${BASE_DIR}/
 
-# rm -rf build
 mkdir build
 cd build
 cmake -DCMAKE_BUILD_TYPE=Release ..
@@ -14,3 +13,6 @@ make install
 
 # rm -r ../../../tmp/test/*
 # ./slam_components/apps/seq_data_test
+
+cd ..
+rm -rf build
