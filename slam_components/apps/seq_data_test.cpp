@@ -449,7 +449,7 @@ int main(int argc, char **argv) {
       general_camera_model::getSimplePinhole(f, f, cx, cy, width, height);
 
   Camera::Ptr camera(new Camera());
-  camera->setCameraModel(pinhole_camera);
+  camera->setCameraModel(pinhole_camera.makeShared());
 
   calib->addCamera(camera);
 
@@ -670,10 +670,10 @@ int main(int argc, char **argv) {
     Eigen::Vector3d twc = Twc.block<3, 1>(0, 3);
     Eigen::Matrix3d Rwc = Twc.block<3, 3>(0, 0);
 
-    std::vector<Eigen::Vector2d> corner_points = camera_model.getCornerPoints();
+    std::vector<Eigen::Vector2d> corner_points = camera_model->getCornerPoints();
     for (int i = 0; i < corner_points.size(); ++i) {
       Eigen::Vector3d bearing;
-      camera_model.planeToSpace(corner_points[i], &bearing);
+      camera_model->planeToSpace(corner_points[i], &bearing);
       Eigen::Vector3d bearing0 = Rwc * bearing.normalized();
       double fi = -twc(2) / bearing0(2);
       double x = twc(0) + fi * bearing0(0);

@@ -19,23 +19,59 @@ PYBIND11_MODULE(pyslamcpts, m) {
   py::class_<Sensor, Sensor::Ptr>(m, "Sensor")
       .def(py::init<>())
       .def("type", &Sensor::type, "get sensor type")
+      .def("set_type", &Sensor::setType, "set sensor type", py::arg("_type"))
+      .def("name", &Sensor::name, "get sensor name")
+      .def("set_name", &Sensor::setName, "set sensor name", py::arg("_name"))
+      .def("topic_name", &Sensor::topicName, "get sensor topic name")
+      .def("set_topic_name", &Sensor::setTopicName, "set sensor topic name",
+           py::arg("_topic_name"))
+      .def("frequency", &Sensor::frequency, "get sensor frequency")
+      .def("set_frequency", &Sensor::setFrequency, "set sensor frequency",
+           py::arg("_frequency"))
       .def("get_extrinsic", &Sensor::getExtrinsic, "get extrinsic")
       .def("set_extrinsic", &Sensor::setExtrinsic, "set extrinsic",
-           py::arg("_extrinsic"));
+           py::arg("_extrinsic"))
+      .def("load", &Sensor::load, "load sensor", py::arg("_calib_file"))
+      .def("print", &Sensor::print, "print sensor");
+
+  py::class_<IMU, Sensor, IMU::Ptr>(m, "IMU")
+      .def(py::init<>())
+      .def("set_imu_params", &IMU::setIMUParams, "set imu params",
+           py::arg("_acc_noise_density"), py::arg("_acc_random_walk"),
+           py::arg("_gyr_noise_density"), py::arg("_gyr_random_walk"))
+      .def("get_imu_params", &IMU::getIMUParams, "get imu params")
+      .def("get_acc_noise_density", &IMU::getAccNoiseDensity,
+           "get acc noise density")
+      .def("get_acc_random_walk", &IMU::getAccRandomWalk, "get acc random walk")
+      .def("get_gyr_noise_density", &IMU::getGyrNoiseDensity,
+           "get gyr noise density")
+      .def("get_gyr_random_walk", &IMU::getGyrRandomWalk, "get gyr random walk")
+      .def("load", &IMU::load, "load imu", py::arg("_calib_file"))
+      .def("print", &IMU::print, "print imu");
 
   py::class_<Camera, Sensor, Camera::Ptr>(m, "Camera")
       .def(py::init<>())
       .def("set_camera_model", &Camera::setCameraModel, "set camera model",
            py::arg("_camera_model"))
-      .def("get_camera_model", &Camera::getCameraModel, "get camera model");
+      .def("get_camera_model", &Camera::getCameraModel, "get camera model")
+      .def("load", &Camera::load, "load camera", py::arg("_calib_file"))
+      .def("print", &Camera::print, "print camera");
 
   py::class_<Calibration, Calibration::Ptr>(m, "Calibration")
       .def(py::init<>())
       .def("cam_num", &Calibration::camNum, "get camera number")
+      .def("imu_num", &Calibration::imuNum, "get imu number")
       .def("add_camera", &Calibration::addCamera,
            "add camera to the calibration", py::arg("camera"))
+      .def("add_imu", &Calibration::addIMU, "add imu to the calibration",
+           py::arg("imu"))
       .def("get_camera", &Calibration::getCamera,
-           "get camera from the calibration", py::arg("cam_id"));
+           "get camera from the calibration", py::arg("cam_id"))
+      .def("get_imu", &Calibration::getIMU, "get imu from the calibration",
+           py::arg("imu_id"))
+      .def("get_body_sensor", &Calibration::getBodySensor, "get body sensor")
+      .def("load", &Calibration::load, "load calibration",
+           py::arg("_calib_file"));
 
   py::class_<Frame, Frame::Ptr>(m, "Frame")
       .def(py::init<>())

@@ -13,7 +13,7 @@
 #include <opencv2/core/eigen.hpp>
 #include <opencv2/opencv.hpp>
 
-#include "utils/cereal_utils.h"
+#include <cereal/cereal_utils.hpp>
 
 #define DEFAULT_DEPTH 1.0
 

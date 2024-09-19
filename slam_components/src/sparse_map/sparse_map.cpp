@@ -17,7 +17,7 @@ void SparseMap::addKeyFrame(
     for (size_t pt_id = 0; pt_id < keypoints[cam_id].size(); ++pt_id) {
       Eigen::Vector2d pt = keypoints[cam_id][pt_id];
       Eigen::Vector3d bearing;
-      cam->getCameraModel().planeToSpace(pt, &bearing);
+      cam->getCameraModel()->planeToSpace(pt, &bearing);
       bearings_cam.push_back(bearing);
     }
     bearings.push_back(bearings_cam);
@@ -426,7 +426,7 @@ bool SparseMap::bundleAdjustment(bool use_prior, int opt_num) {
 
   double fx, fy, cx, cy;
   std::vector<double> params =
-      calibration_->getCamera(0)->getCameraModel().getParams();
+      calibration_->getCamera(0)->getCameraModel()->getParams();
   fx = params[0];
   fy = params[1];
   cx = params[2];
@@ -584,7 +584,7 @@ void SparseMap::printReprojError(const FrameIDType &f_id1, const int &c_id1) {
     Eigen::Vector3d pt_c = Tcw.block<3, 3>(0, 0) * feature1->getWorldPoint() +
                            Tcw.block<3, 1>(0, 3);
     Eigen::Vector2d pt_2d2;
-    camera->getCameraModel().spaceToPlane(pt_c, &pt_2d2);
+    camera->getCameraModel()->spaceToPlane(pt_c, &pt_2d2);
     Eigen::Vector2d pt_2d_obs = frame1->keypoints()[c_id1][pt_id1];
     Eigen::Vector2d error = pt_2d2 - pt_2d_obs;
 
@@ -819,7 +819,7 @@ cv::Mat SparseMap::drawReprojKeyPoint(FrameIDType frame_id, int cam_id) {
     Eigen::Vector3d pt_c = Tcw.block<3, 3>(0, 0) * feature->getWorldPoint() +
                            Tcw.block<3, 1>(0, 3);
     Eigen::Vector2d pt_2d2;
-    camera->getCameraModel().spaceToPlane(pt_c, &pt_2d2);
+    camera->getCameraModel()->spaceToPlane(pt_c, &pt_2d2);
     Eigen::Vector2d pt_2d_obs = frame->keypoints()[cam_id][pt_id];
 
     cv::Point pt0 = cv::Point(pt_2d2(0), pt_2d2(1));
@@ -927,12 +927,12 @@ void SparseMap::matchByPolyArea(const FrameIDType &f_id1, const int &c_id1) {
     Eigen::Vector3d twc = Twc.block<3, 1>(0, 3);
     Eigen::Matrix3d Rwc = Twc.block<3, 3>(0, 0);
 
-    std::vector<Eigen::Vector2d> corner_points = camera_model.getCornerPoints();
+    std::vector<Eigen::Vector2d> corner_points = camera_model->getCornerPoints();
 
     Polygon2D poly;
     for (int i = 0; i < corner_points.size(); ++i) {
       Eigen::Vector3d bearing;
-      camera_model.planeToSpace(corner_points[i], &bearing);
+      camera_model->planeToSpace(corner_points[i], &bearing);
       Eigen::Vector3d bearing0 = Rwc * bearing.normalized();
       double fi = -twc(2) / bearing0(2);
       double x = twc(0) + fi * bearing0(0);
@@ -1007,7 +1007,7 @@ bool SparseMap::bundleAdjustment2(bool use_prior, int opt_num) {
 
   double fx, fy, cx, cy;
   std::vector<double> params =
-      calibration_->getCamera(0)->getCameraModel().getParams();
+      calibration_->getCamera(0)->getCameraModel()->getParams();
   fx = params[0];
   fy = params[1];
   cx = params[2];
