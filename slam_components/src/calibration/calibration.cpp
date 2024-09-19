@@ -41,7 +41,6 @@ void Calibration::load(const std::string &calib_file) {
   }
 
   std::string parent_dir = Utils::GetParentDir(calib_file);
-
   if (!calib["cam_num"].empty()) {
     int cam_num;
     calib["cam_num"] >> cam_num;
@@ -71,9 +70,32 @@ void Calibration::load(const std::string &calib_file) {
     }
   }
 
-  calib.release();
+  if (!calib["body_sensor"].empty()) {
+    std::string body_sensor_name;
+    calib["body_sensor"] >> body_sensor_name;
+    if (imu_map_.find(body_sensor_name) != imu_map_.end()) {
+      body_sensor_ = imu_map_[body_sensor_name];
+    } else if (camera_map_.find(body_sensor_name) != camera_map_.end()) {
+      body_sensor_ = camera_map_[body_sensor_name];
+    } else {
+      std::cerr << "Error: Body sensor " << body_sensor_name
+                << " is not found in the calibration file!" << std::endl;
+    }
+  }
 
-  std::cout << "Calibration file " << calib_file << " loaded." << std::endl;
+  calib.release();
 }
 
-void Calibration::print() const {}
+void Calibration::print() {
+  std::cout << "Calibration Parameters: " << std::endl;
+  std::cout << "Body Sensor: " << getBodySensor()->name() << std::endl;
+  std::cout << "Camera Number: " << camNum() << std::endl;
+  for (size_t i = 0; i < camNum(); ++i) {
+    getCamera(i)->print();
+  }
+
+  std::cout << "IMU Number: " << imuNum() << std::endl;
+  for (size_t i = 0; i < imuNum(); ++i) {
+    getIMU(i)->print();
+  }
+}

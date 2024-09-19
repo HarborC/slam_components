@@ -12,5 +12,5 @@ cmake -DCMAKE_BUILD_TYPE=Release ..
 make -j
 make install
 
-rm -r ../../../tmp/test/*
-./slam_components/apps/seq_data_test
+# rm -r ../../../tmp/test/*
+# ./slam_components/apps/seq_data_test

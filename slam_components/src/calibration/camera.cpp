@@ -33,9 +33,6 @@ void Camera::load(const std::string &calib_file) {
   }
 
   calib.release();
-
-  std::cout << "Camera calibration file " << calib_file << " loaded."
-            << std::endl;
 }
 
 void Camera::print() const {

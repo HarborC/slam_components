@@ -27,7 +27,7 @@ public:
 
   void load(const std::string &calib_file);
 
-  void print() const;
+  void print();
 
 protected:
   CameraPtrMap camera_map_;

@@ -47,18 +47,18 @@ void Sensor::load(const std::string &calib_file) {
   }
 
   if (!calib["extrinsic"].empty()) {
-    cv::Mat extrinsic_mat;
-    calib["extrinsic"] >> extrinsic_mat;
-    Eigen::MatrixXd temp(3, 4);
-    cv::cv2eigen(extrinsic_mat, temp);
-    extrinsic_.block<3, 4>(0, 0) = temp;
-    extrinsic_(3, 3) = 1.0;
+    std::vector<double> extrinsic_vec;
+    calib["extrinsic"] >> extrinsic_vec;
+
+    extrinsic_ = Eigen::Matrix4d::Identity();
+    for (int i = 0; i < 3; ++i) {
+      for (int j = 0; j < 4; ++j) {
+        extrinsic_(i, j) = extrinsic_vec[i * 4 + j];
+      }
+    }
   }
 
   calib.release();
-
-  std::cout << "Sensor calibration file " << calib_file << " loaded."
-            << std::endl;
 }
 
 void Sensor::print() const {

@@ -43,8 +43,6 @@ void IMU::load(const std::string &calib_file) {
     calib["gyr_random_walk"] >> gyr_random_walk_;
 
   calib.release();
-
-  std::cout << "IMU calibration file " << calib_file << " loaded." << std::endl;
 }
 
 void IMU::print() const {

@@ -71,7 +71,8 @@ PYBIND11_MODULE(pyslamcpts, m) {
            py::arg("imu_id"))
       .def("get_body_sensor", &Calibration::getBodySensor, "get body sensor")
       .def("load", &Calibration::load, "load calibration",
-           py::arg("_calib_file"));
+           py::arg("_calib_file"))
+      .def("print", &Calibration::print, "print calibration");
 
   py::class_<Frame, Frame::Ptr>(m, "Frame")
       .def(py::init<>())
