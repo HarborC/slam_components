@@ -54,6 +54,15 @@ PYBIND11_MODULE(pyslamcpts, m) {
       .def("set_camera_model", &Camera::setCameraModel, "set camera model",
            py::arg("_camera_model"))
       .def("get_camera_model", &Camera::getCameraModel, "get camera model")
+      .def("set_pinhole_camera_model", &Camera::setPinholeCameraModel,
+           "set pinhole camera model", py::arg("fx"), py::arg("fy"),
+           py::arg("cx"), py::arg("cy"), py::arg("w"), py::arg("h"))
+      .def("get_pinhole_camera_model", &Camera::getPinholeCameraModel,
+           "get pinhole camera model")
+      .def("get_pinhole_params", &Camera::getPinholeParams,
+           "get pinhole params")
+      .def("read_image", &Camera::readImage, "read image", py::arg("img_name"),
+           py::arg("undistort") = true, py::arg("bgr") = false)
       .def("load", &Camera::load, "load camera", py::arg("_calib_file"))
       .def("print", &Camera::print, "print camera");
 
@@ -70,9 +79,15 @@ PYBIND11_MODULE(pyslamcpts, m) {
       .def("get_imu", &Calibration::getIMU, "get imu from the calibration",
            py::arg("imu_id"))
       .def("get_body_sensor", &Calibration::getBodySensor, "get body sensor")
+      .def("get_stereo_pairs", &Calibration::getStereoPairs, "get stereo pairs")
+      .def("get_average_depth", &Calibration::getAverageDepth,
+           "get average depth")
+      .def("get_gravity_norm", &Calibration::getGravityNorm, "get gravity norm")
       .def("load", &Calibration::load, "load calibration",
            py::arg("_calib_file"))
-      .def("print", &Calibration::print, "print calibration");
+      .def("print", &Calibration::print, "print calibration")
+      .def("calc_overlap_views", &Calibration::calcOverlapViews,
+           "calculate overlap views");
 
   py::class_<Frame, Frame::Ptr>(m, "Frame")
       .def(py::init<>())

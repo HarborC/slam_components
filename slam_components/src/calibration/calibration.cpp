@@ -1,4 +1,5 @@
 #include "calibration/calibration.h"
+#include "general_camera_model/function.hpp"
 #include "utils/io_utils.h"
 
 Calibration::Calibration() {}
@@ -32,6 +33,14 @@ IMU::Ptr Calibration::getIMU(const size_t &imu_id) {
 
 Sensor::Ptr Calibration::getBodySensor() { return body_sensor_; }
 
+std::vector<std::pair<int, int>> Calibration::getStereoPairs() {
+  return stereo_pairs_;
+}
+
+double Calibration::getAverageDepth() { return average_depth_; }
+
+double Calibration::getGravityNorm() { return gravity_norm_; }
+
 void Calibration::load(const std::string &calib_file) {
   cv::FileStorage calib = cv::FileStorage(calib_file, cv::FileStorage::READ);
   if (!calib.isOpened()) {
@@ -53,6 +62,12 @@ void Calibration::load(const std::string &calib_file) {
       camera->setName(std::string("cam") + std::to_string(i));
       addCamera(camera);
     }
+
+    if (!calib["average_depth"].empty()) {
+      calib["average_depth"] >> average_depth_;
+    }
+
+    calcOverlapViews();
   }
 
   if (!calib["imu_num"].empty()) {
@@ -67,6 +82,10 @@ void Calibration::load(const std::string &calib_file) {
       imu->load(imu_file);
       imu->setName(std::string("imu") + std::to_string(i));
       addIMU(imu);
+    }
+
+    if (!calib["gravity_norm"].empty()) {
+      calib["gravity_norm"] >> gravity_norm_;
     }
   }
 
@@ -98,4 +117,31 @@ void Calibration::print() {
   for (size_t i = 0; i < imuNum(); ++i) {
     getIMU(i)->print();
   }
+
+  std::cout << "\nStereo Pairs: " << stereo_pairs_.size() << std::endl;
+  for (size_t i = 0; i < stereo_pairs_.size(); i++) {
+    std::cout << " - " << i << " cam" << stereo_pairs_[i].first << " cam"
+              << stereo_pairs_[i].second << std::endl;
+  }
+  std::cout << std::endl;
+
+  std::cout << "average_depth: " << average_depth_ << std::endl;
+  std::cout << "gravity_norm: " << gravity_norm_ << std::endl;
+}
+
+void Calibration::calcOverlapViews() {
+  stereo_pairs_.clear();
+  if (camNum() < 2) {
+    return;
+  }
+
+  std::vector<GeneralCameraModel> camera_models;
+  std::vector<Eigen::Matrix4d> extrinsics;
+  for (size_t i = 0; i < camNum(); ++i) {
+    camera_models.push_back(*getCamera(i)->getCameraModel());
+    extrinsics.push_back(getCamera(i)->getExtrinsic());
+  }
+
+  stereo_pairs_ = general_camera_model::calcOverlapViews(
+      camera_models, extrinsics, average_depth_);
 }
