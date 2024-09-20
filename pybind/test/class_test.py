@@ -6,9 +6,8 @@ class KeyFrame(Frame):
         self.other = None
         
 class Map(SparseMap):
-    def __init__(self, calib: Calibration) -> None:
-        super().__init__(calib)
-        self.dense_map = None
+    def __init__(self, calib: Calibration):
+        SparseMap.__init__(self, calib)
         
 kf = KeyFrame(1, 0)
 print(kf.id())
