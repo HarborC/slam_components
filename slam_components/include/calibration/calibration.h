@@ -6,6 +6,7 @@
 class Calibration {
 public:
   using Ptr = std::shared_ptr<Calibration>;
+  Ptr makeShared() { return std::make_shared<Calibration>(*this); }
 
 public:
   Calibration();

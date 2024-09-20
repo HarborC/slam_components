@@ -9,6 +9,7 @@ class Camera : public Sensor {
 public:
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW
   using Ptr = std::shared_ptr<Camera>;
+  Ptr makeShared() { return std::make_shared<Camera>(*this); }
 
 public:
   Camera();

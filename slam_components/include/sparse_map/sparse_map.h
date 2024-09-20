@@ -8,6 +8,7 @@ class SparseMap {
 public:
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW
   using Ptr = std::shared_ptr<SparseMap>;
+  Ptr makeShared() { return std::make_shared<SparseMap>(*this); }
 
 public:
   SparseMap() {}

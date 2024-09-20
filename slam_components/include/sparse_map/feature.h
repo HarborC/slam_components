@@ -6,6 +6,7 @@ class Feature {
 public:
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW
   using Ptr = std::shared_ptr<Feature>;
+  Ptr makeShared() { return std::make_shared<Feature>(*this); }
 
 public:
   Feature() {}
@@ -13,6 +14,8 @@ public:
   ~Feature() {}
 
   FeatureIDType id() { return id_; }
+
+  void setId(const FeatureIDType &id) { id_ = id; }
 
   FrameIDType refFrameId() { return ref_frame_id_; }
 

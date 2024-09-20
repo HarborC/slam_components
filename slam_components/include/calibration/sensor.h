@@ -8,6 +8,7 @@ class Sensor {
 public:
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW
   using Ptr = std::shared_ptr<Sensor>;
+  Ptr makeShared() { return std::make_shared<Sensor>(*this); }
 
 public:
   Sensor();

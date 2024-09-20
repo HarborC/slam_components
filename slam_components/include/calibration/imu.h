@@ -6,6 +6,7 @@ class IMU : public Sensor {
 public:
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW
   using Ptr = std::shared_ptr<IMU>;
+  Ptr makeShared() { return std::make_shared<IMU>(*this); }
 
 public:
   IMU();

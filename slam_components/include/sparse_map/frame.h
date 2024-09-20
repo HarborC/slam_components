@@ -6,6 +6,7 @@ class Frame {
 public:
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW
   using Ptr = std::shared_ptr<Frame>;
+  Ptr makeShared() { return std::make_shared<Frame>(*this); }
 
 public:
   Frame() {}
@@ -13,6 +14,8 @@ public:
   ~Frame() {}
 
   FrameIDType id();
+
+  void setId(const FrameIDType &id) { id_ = id; }
 
   int camNum();
 
@@ -72,8 +75,8 @@ private:
   std::vector<std::vector<FeatureIDType>> feature_ids_;
 
   // Pose
-  double pose_q[4]; // x, y, z, w (Rotation)
-  double pose_t[3]; // x, y, z (Translation)
+  double pose_q[4] = {0, 0, 0, 1}; // x, y, z, w (Rotation)
+  double pose_t[3] = {0, 0, 0}; // x, y, z (Translation)
 
 private:
   friend class cereal::access;
