@@ -8,6 +8,9 @@ class KeyFrame(Frame):
 class Map(SparseMap):
     def __init__(self, calib: Calibration):
         SparseMap.__init__(self, calib)
+
+import torch
+import torch.multiprocessing as mp
         
 kf = KeyFrame(1, 0)
 print(kf.id())
