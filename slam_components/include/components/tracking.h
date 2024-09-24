@@ -6,13 +6,13 @@
 #include "calibration/calibration.h"
 #include "components/frame.h"
 #include "components/network/droid_net/droid_net.h"
+#include "components/sensor_data.h"
 
 namespace slam_components {
 
 struct TrackingInput {
-  double image_time;
-  std::vector<cv::Mat> images_data;
-  std::vector<std::vector<double>> inetial_data;
+  CameraData::Ptr camera_data;
+  std::vector<IMUData::Ptr> inetial_data;
   std::map<std::string, std::vector<double>> groundtruth;
 };
 

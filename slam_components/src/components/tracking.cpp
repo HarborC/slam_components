@@ -39,9 +39,10 @@ bool Tracking::initialize(const cv::FileNode &node,
 }
 
 bool Tracking::track(const TrackingInput &input) {
-  curr_frame_.reset(new Frame(next_frame_id_++, input.images_data.size()));
-  curr_frame_->setTimestamp(input.image_time);
-  curr_frame_->addData(input.images_data);
+  curr_frame_.reset(
+      new Frame(next_frame_id_++, input.camera_data->images_.size()));
+  curr_frame_->setTimestamp(input.camera_data->timestamp_);
+  curr_frame_->addData(input.camera_data->images_);
 
   estimateInitialPose();
 

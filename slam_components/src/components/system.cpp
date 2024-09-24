@@ -2,13 +2,19 @@
 
 namespace slam_components {
 
+System::~System() {
+  if (loop_thread) {
+    loop_thread->join();
+  }
+}
+
 void System::feedIMU(const double &timestamp,
                      const Eigen::Vector3d &angular_velocity,
                      const Eigen::Vector3d &acceleration) {
   IMUData::Ptr imu_data(new IMUData(timestamp, angular_velocity, acceleration));
 
   feed_mtx.lock();
-  imu_deque.push_back(imu_data);
+  imu_buf_.push_back(imu_data);
   feed_mtx.unlock();
 }
 
@@ -17,14 +23,66 @@ void System::feedCamera(const double &timestamp,
   CameraData::Ptr camera_data(new CameraData(timestamp, images));
 
   feed_mtx.lock();
-  camera_deque.push_back(camera_data);
+  camera_buf_.push_back(camera_data);
   feed_mtx.unlock();
 }
 
-bool System::getTrackingInput(TrackingInput& input) [
+bool System::getTrackingInput(TrackingInput &input) {
+  if (camera_buf_.empty() || imu_buf_.empty()) {
+    return false;
+  }
+
+  feed_mtx.lock();
+  double t_image = camera_buf_.front()->timestamp_;
+  if (!(imu_buf_.back()->timestamp_ > t_image)) {
+    feed_mtx.unlock();
+    return false;
+  }
+
+  if (!(imu_buf_.front()->timestamp_ < t_image)) {
+    camera_buf_.pop_front();
+    feed_mtx.unlock();
+    return false;
+  }
+
+  auto camera_data = camera_buf_.front();
+  camera_buf_.pop_front();
+
+  std::vector<IMUData::Ptr> IMUs;
+
+  int idx = 0;
+  for (; idx < imu_buf_.size(); idx++) {
+    if (imu_buf_[idx]->timestamp_ < t_image) {
+      IMUs.emplace_back(imu_buf_[idx]);
+    } else {
+      break;
+    }
+  }
+  IMUs.emplace_back(imu_buf_[idx]);
+
+  while (imu_buf_.front()->timestamp_ < t_image) {
+    auto iter = imu_buf_.begin();
+    iter = imu_buf_.erase(iter);
+  }
+
+  feed_mtx.unlock();
+
+  input.camera_data = camera_data;
+  input.inetial_data = IMUs;
 
   return true;
-]
+}
+
+void System::processLoop() {
+  while (1) {
+    TrackingInput input;
+    if (getTrackingInput(input)) {
+      tracking_->track(input);
+    } else {
+      std::this_thread::sleep_for(std::chrono::microseconds(10));
+    }
+  }
+}
 
 bool System::initialize(const std::string &config_path) {
   cv::FileStorage node(config_path, cv::FileStorage::READ);
@@ -54,6 +112,8 @@ bool System::initialize(const std::string &config_path) {
       return false;
     }
   }
+
+  loop_thread.reset(new std::thread(&System::processLoop, this));
 
   return true;
 }

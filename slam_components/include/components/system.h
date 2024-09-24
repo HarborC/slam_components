@@ -2,6 +2,7 @@
 
 #include <deque>
 #include <mutex>
+#include <thread>
 
 #include "calibration/calibration.h"
 #include "components/network/droid_net/droid_net.h"
@@ -17,7 +18,7 @@ public:
 
 public:
   System() = default;
-  ~System() {}
+  ~System();
 
   void feedIMU(const double &timestamp, const Eigen::Vector3d &angular_velocity,
                const Eigen::Vector3d &acceleration);
@@ -30,17 +31,20 @@ private:
   bool initializeNetwork(const cv::FileNode &node);
   bool initializeCalibration(const cv::FileNode &node);
 
-  bool getTrackingInput(TrackingInput& input);
+  bool getTrackingInput(TrackingInput &input);
+
+  void processLoop();
 
 private:
   DroidNet::Ptr droid_net_;
   Calibration::Ptr calibration_;
   Tracking::Ptr tracking_;
 
-  std::deque<IMUData::Ptr> imu_deque;
-  std::deque<CameraData::Ptr> camera_deque;
+  std::deque<IMUData::Ptr> imu_buf_;
+  std::deque<CameraData::Ptr> camera_buf_;
 
   std::mutex feed_mtx;
+  std::shared_ptr<std::thread> loop_thread;
 };
 
 } // namespace slam_components
