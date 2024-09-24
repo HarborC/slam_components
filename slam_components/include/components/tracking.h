@@ -20,7 +20,6 @@ class Tracking {
 public:
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW
   using Ptr = std::shared_ptr<Tracking>;
-  Ptr makeShared() { return std::make_shared<Tracking>(*this); }
 
 public:
   Tracking() = default;

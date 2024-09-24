@@ -2,6 +2,20 @@
 
 #include <torch/torch.h>
 
+#define CHECK_CONTIGUOUS(x)                                                    \
+  TORCH_CHECK(x.is_contiguous(), #x " must be contiguous")
+#define CHECK_INPUT(x) CHECK_CONTIGUOUS(x)
+
+namespace slam_components {
+
+std::vector<torch::Tensor> corr_index_forward(torch::Tensor volume,
+                                              torch::Tensor coords, int radius);
+
+std::vector<torch::Tensor> corr_index_backward(torch::Tensor volume,
+                                               torch::Tensor coords,
+                                               torch::Tensor corr_grad,
+                                               int radius);
+
 struct CorrSampler : public torch::autograd::Function<CorrSampler> {
   static torch::Tensor forward(torch::autograd::AutogradContext *ctx,
                                torch::Tensor volume, torch::Tensor coords,
@@ -26,3 +40,5 @@ private:
   int radius;
   std::vector<torch::Tensor> corr_pyramid;
 };
+
+} // namespace slam_components

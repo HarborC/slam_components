@@ -2,6 +2,30 @@
 
 namespace slam_components {
 
+void System::feedIMU(const double &timestamp,
+                     const Eigen::Vector3d &angular_velocity,
+                     const Eigen::Vector3d &acceleration) {
+  IMUData::Ptr imu_data(new IMUData(timestamp, angular_velocity, acceleration));
+
+  feed_mtx.lock();
+  imu_deque.push_back(imu_data);
+  feed_mtx.unlock();
+}
+
+void System::feedCamera(const double &timestamp,
+                        const std::vector<cv::Mat> &images) {
+  CameraData::Ptr camera_data(new CameraData(timestamp, images));
+
+  feed_mtx.lock();
+  camera_deque.push_back(camera_data);
+  feed_mtx.unlock();
+}
+
+bool System::getTrackingInput(TrackingInput& input) [
+
+  return true;
+]
+
 bool System::initialize(const std::string &config_path) {
   cv::FileStorage node(config_path, cv::FileStorage::READ);
   if (!node.isOpened()) {
@@ -59,7 +83,7 @@ bool System::initializeCalibration(const cv::FileNode &node) {
   node["path"] >> calib_file;
 
   calibration_.reset(new Calibration());
-  calibration_->load(calib_file);
+  calibration_->load(std::string(PROJECT_DIR) + calib_file);
 
   return true;
 }

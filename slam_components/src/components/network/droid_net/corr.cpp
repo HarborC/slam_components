@@ -1,15 +1,16 @@
 #include "components/network/droid_net/corr.h"
 
+namespace slam_components {
+
 torch::Tensor CorrSampler::forward(torch::autograd::AutogradContext *ctx,
                                    torch::Tensor volume, torch::Tensor coords,
                                    int radius) {
   ctx->save_for_backward({volume, coords});
   ctx->saved_data["radius"] = radius;
 
-  torch::Tensor corr;
-  // torch::Tensor corr = corr_index_forward(volume, coords, radius);
+  auto corr = corr_index_forward(volume, coords, radius);
 
-  return corr;
+  return corr[0];
 }
 
 torch::autograd::tensor_list
@@ -22,11 +23,9 @@ CorrSampler::backward(torch::autograd::AutogradContext *ctx,
 
   torch::Tensor grad_output = grad_outputs[0].contiguous();
 
-  torch::Tensor grad_volume;
-  // torch::Tensor grad_volume = corr_index_backward(volume, coords,
-  // grad_output, radius);
+  auto grad_volume = corr_index_backward(volume, coords, grad_output, radius);
 
-  return {grad_volume, torch::Tensor(), torch::Tensor()};
+  return {grad_volume[0], torch::Tensor(), torch::Tensor()};
 }
 
 CorrBlock::CorrBlock(torch::Tensor fmap1, torch::Tensor fmap2, int num_levels,
@@ -90,3 +89,5 @@ torch::Tensor CorrBlock::corr(torch::Tensor fmap1, torch::Tensor fmap2) {
 
   return corr.view({batch, num, ht, wd, ht, wd});
 }
+
+} // namespace slam_components

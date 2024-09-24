@@ -26,7 +26,7 @@ bool DroidNet::initialize(const cv::FileNode &node) {
   node["fnet_path"] >> fnet_path;
 
   try {
-    droid_fnet_ = torch::jit::load(fnet_path);
+    droid_fnet_ = torch::jit::load(std::string(PROJECT_DIR) + fnet_path);
   } catch (const c10::Error &e) {
     std::cerr << "Error loading fnet_path\n";
     return false;
@@ -43,7 +43,7 @@ bool DroidNet::initialize(const cv::FileNode &node) {
   node["cnet_path"] >> cnet_path;
 
   try {
-    droid_cnet_ = torch::jit::load(cnet_path);
+    droid_cnet_ = torch::jit::load(std::string(PROJECT_DIR) + cnet_path);
   } catch (const c10::Error &e) {
     std::cerr << "Error loading cnet_path\n";
     return false;
@@ -60,7 +60,7 @@ bool DroidNet::initialize(const cv::FileNode &node) {
   node["update_path"] >> update_path;
 
   try {
-    droid_update_ = torch::jit::load(update_path);
+    droid_update_ = torch::jit::load(std::string(PROJECT_DIR) + update_path);
   } catch (const c10::Error &e) {
     std::cerr << "Error loading update_path\n";
     return false;

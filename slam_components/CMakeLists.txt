@@ -6,7 +6,7 @@ file(GLOB SRC
   # ${CMAKE_CURRENT_SOURCE_DIR}/src/sparse_map/*.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/src/calibration/*.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/src/components/*.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/src/components/network/droid_net/*.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/components/network/droid_net/*
 )
 
 add_library(${PROJECT_NAME} SHARED ${SRC})
@@ -18,6 +18,7 @@ target_include_directories(${PROJECT_NAME} PUBLIC
 
 target_compile_features(${PROJECT_NAME} PRIVATE cxx_std_17)
 set_property(TARGET ${PROJECT_NAME} PROPERTY CXX_STANDARD 17)
+target_compile_definitions(${PROJECT_NAME} PUBLIC PROJECT_DIR="${PROJECT_SOURCE_DIR}/")
 
 install(
   DIRECTORY include/

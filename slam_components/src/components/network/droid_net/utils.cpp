@@ -1,5 +1,7 @@
 #include "components/network/droid_net/utils.h"
 
+namespace slam_components {
+
 torch::Tensor getCoordsGrid(int64_t ht, int64_t wd, torch::Device device) {
   // 创建 ht 和 wd 范围的 arange 张量
   torch::Tensor y = torch::arange(
@@ -22,3 +24,5 @@ torch::Tensor getCoordsGrid(int64_t ht, int64_t wd, torch::Device device) {
 
   return stacked_grid;
 }
+
+} // namespace slam_components

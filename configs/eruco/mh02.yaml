@@ -3,17 +3,17 @@
 
 Dataset:
   type: "euroc"
-  path: "./datasets/euroc/mh02"
+  path: "datasets/euroc/mh02"
   start_idx: 800
 
 Calibration:
-  path: "/mnt/i/project/slam/thirdparty/slam_components/configs/eruco/calibration.yaml"
+  path: "configs/eruco/calibration.yaml"
 
 Network:
   droidnet:
-    fnet_path: "/mnt/i/project/slam/thirdparty/slam_components/checkpoints/droid_fnet.pt"
-    cnet_path: "/mnt/i/project/slam/thirdparty/slam_components/checkpoints/droid_cnet.pt"
-    update_path: "/mnt/i/project/slam/thirdparty/slam_components/checkpoints/droid_update.pt"
+    fnet_path: "checkpoints/droid_fnet.pt"
+    cnet_path: "checkpoints/droid_cnet.pt"
+    update_path: "checkpoints/droid_update.pt"
   lightglue:
     keypoint_type: "superpoint"
     max_keypoints: 512
