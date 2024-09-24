@@ -7,12 +7,14 @@ cd ${BASE_DIR}/
 
 mkdir build
 cd build
-cmake -DCMAKE_BUILD_TYPE=Release ..
+cmake -DCMAKE_PREFIX_PATH="/mnt/i/project/slam/tmp/libtorch/share/cmake" ..
 make -j
 make install
 
 # rm -r ../../../tmp/test/*
 # ./slam_components/apps/seq_data_test
 
-cd ..
-rm -rf build
+# cd ..
+# rm -rf build
+
+export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/mnt/i/project/slam/tmp/libtorch/lib

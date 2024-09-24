@@ -42,6 +42,10 @@ public:
 
   void setBodyPose(const Eigen::Matrix4d &Twb);
 
+  Eigen::Vector3d getVelocity();
+
+  void setVelocity(const Eigen::Vector3d &vel);
+
   void addData(const std::vector<cv::Mat> &_imgs = {},
                const std::vector<std::vector<Eigen::Vector2d>> &_keypoints = {},
                const std::vector<std::vector<Eigen::Vector3d>> &_bearings = {},
@@ -61,6 +65,8 @@ public:
 
   double *getTranslationParams();
 
+  double* getVelocityParams();
+
 public:
   Eigen::Matrix4d Twb_prior_;
   std::vector<Eigen::Matrix4d> Tcw_;
@@ -77,6 +83,7 @@ private:
   // Pose
   double pose_q[4] = {0, 0, 0, 1}; // x, y, z, w (Rotation)
   double pose_t[3] = {0, 0, 0}; // x, y, z (Translation)
+  double velocity[3] = {0, 0, 0}; // x, y, z (Velocity)
 
 private:
   friend class cereal::access;

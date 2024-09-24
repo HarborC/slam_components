@@ -1,0 +1,18 @@
+%YAML 1.0
+---
+
+topic_name: "/cam1/image_raw"
+
+frequency: 20
+intrinsic: "cam1.json"
+extrinsic: [0.0125552670891, -0.999755099723, 0.0182237714554, -0.0198435579556,
+            0.999598781151, 0.0130119051815, 0.0251588363115, 0.0453689425024,
+            -0.0253898008918, 0.0179005838253, 0.999517347078, 0.00786212447038]
+opt_intrinsics: [435.2046959714599, 435.2046959714599, 367.4517211914062, 252.2008514404297, 752, 480]
+
+time_offset: 0.0
+line_delay: 0.0
+
+is_fixed_extrinsics: true
+is_fixed_time_offset: true
+is_fixed_line_delay: true

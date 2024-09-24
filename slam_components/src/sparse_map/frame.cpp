@@ -24,6 +24,8 @@ double *Frame::getRotaionParams() { return pose_q; }
 
 double *Frame::getTranslationParams() { return pose_t; }
 
+double *Frame::getVelocityParams() { return velocity; }
+
 Eigen::Matrix4d Frame::getBodyPose() {
   Eigen::Matrix4d Twb = Eigen::Matrix4d::Identity();
   Twb.block<3, 3>(0, 0) =
@@ -44,6 +46,16 @@ void Frame::setBodyPose(const Eigen::Matrix4d &Twb) {
   pose_t[0] = twb(0);
   pose_t[1] = twb(1);
   pose_t[2] = twb(2);
+}
+
+Eigen::Vector3d Frame::getVelocity() {
+  return Eigen::Vector3d(velocity[0], velocity[1], velocity[2]);
+}
+
+void Frame::setVelocity(const Eigen::Vector3d &vel) {
+  velocity[0] = vel(0);
+  velocity[1] = vel(1);
+  velocity[2] = vel(2);
 }
 
 void Frame::addData(const std::vector<cv::Mat> &_imgs,

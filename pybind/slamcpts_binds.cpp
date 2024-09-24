@@ -105,6 +105,8 @@ PYBIND11_MODULE(pyslamcpts, m) {
       .def("get_body_pose", &Frame::getBodyPose, "get body pose")
       .def("set_body_pose", &Frame::setBodyPose, "set body pose",
            py::arg("Twb"))
+      .def("get_velocity", &Frame::getVelocity, "get velocity")
+      .def("set_velocity", &Frame::setVelocity, "set velocity", py::arg("vel"))
       .def("add_data", &Frame::addData, "add data to the frame",
            py::arg("_imgs") = std::vector<cv::Mat>(),
            py::arg("_keypoints") = std::vector<std::vector<Eigen::Vector2d>>(),
@@ -227,5 +229,9 @@ PYBIND11_MODULE(pyslamcpts, m) {
       .def("get_feature_ids", &SparseMap::getFeatureIDs,
            "get feature ids of the sparse map")
       .def("get_calibration", &SparseMap::getCalibration,
-           "get calibration of the sparse map");
+           "get calibration of the sparse map")
+      .def("add_matches", &SparseMap::addMatches,
+           "add matches to the sparse map", py::arg("left_frame_id"),
+           py::arg("left_cam_id"), py::arg("right_frame_id"),
+           py::arg("right_cam_id"), py::arg("matches"));
 }

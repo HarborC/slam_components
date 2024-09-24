@@ -1,0 +1,64 @@
+#pragma once
+
+#include <Eigen/Core>
+#include <Eigen/Geometry>
+
+#include "calibration/calibration.h"
+#include "components/frame.h"
+#include "components/network/droid_net.h"
+
+namespace slam_components {
+
+struct TrackingInput {
+  double image_time;
+  std::vector<cv::Mat> images_data;
+  std::vector<std::vector<double>> inetial_data;
+  std::map<std::string, std::vector<double>> groundtruth;
+};
+
+class Tracking {
+public:
+  EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+  using Ptr = std::shared_ptr<Tracking>;
+  Ptr makeShared() { return std::make_shared<Tracking>(*this); }
+
+public:
+  Tracking() = default;
+  ~Tracking() {}
+
+  bool initialize(const cv::FileNode &node, const DroidNet::Ptr &droid_net,
+                  const Calibration::Ptr &calibration);
+
+  bool track(const TrackingInput &input);
+
+private:
+  void estimateInitialPose();
+  void estimatePoseByConstantVelocity();
+  void estimatePoseByIMU();
+  void estimateInitialIdepth();
+
+  bool judgeKeyframe();
+
+  void propressImage();
+
+private:
+  FrameIDType next_frame_id_ = 0;
+  DroidNet::Ptr droid_net_;
+  Calibration::Ptr calibration_;
+  Frame::Ptr last_frame_ = nullptr;
+  Frame::Ptr last_keyframe_ = nullptr;
+  Frame::Ptr curr_frame_ = nullptr;
+  Eigen::Vector3d linear_velocity_ = Eigen::Vector3d::Zero();
+  Eigen::Vector3d angular_velocity_ = Eigen::Vector3d::Zero();
+  bool is_imu_initial_ = false;
+
+  // hyper parameters
+  float motion_filter_thresh_ = 2.5;
+  int image_downsample_scale_ = 8;
+  std::string motion_model_ = "constant_velocity";
+
+  // mean, std for image normalization
+  torch::Tensor MEAN, STDV;
+};
+
+} // namespace slam_components

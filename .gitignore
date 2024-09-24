@@ -145,7 +145,7 @@ dist
 *.egg-info
 *.vscode/
 # *.pth
-checkpoints
+# checkpoints
 datasets
 runs
 cache

@@ -1,0 +1,15 @@
+%YAML 1.0
+---
+
+body_sensor: "imu0"
+
+imu_num: 1
+imu0: "imu/imu0.yaml"
+
+cam_num: 2
+cam0: "camera/cam0.yaml"
+cam1: "camera/cam1.yaml"
+
+gravity_norm: 9.81007
+average_depth: 10
+cam_size: [752, 480]
