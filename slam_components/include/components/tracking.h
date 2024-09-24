@@ -5,7 +5,7 @@
 
 #include "calibration/calibration.h"
 #include "components/frame.h"
-#include "components/network/droid_net.h"
+#include "components/network/droid_net/droid_net.h"
 
 namespace slam_components {
 
@@ -39,7 +39,10 @@ private:
 
   bool judgeKeyframe();
 
-  void propressImage();
+  void propressImage(const Frame::Ptr &frame);
+  void extractDenseFeature(const Frame::Ptr &frame,
+                           bool only_feature_map = false);
+  bool motionFilter();
 
 private:
   FrameIDType next_frame_id_ = 0;
@@ -56,7 +59,6 @@ private:
   float motion_filter_thresh_ = 2.5;
   int image_downsample_scale_ = 8;
   std::string motion_model_ = "constant_velocity";
-
   // mean, std for image normalization
   torch::Tensor MEAN, STDV;
 };

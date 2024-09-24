@@ -83,8 +83,11 @@ public:
   std::vector<Eigen::Matrix4d> Tcw_;
   std::vector<std::set<std::pair<FrameIDType, int>>> matched_frames_;
 
-  torch::Tensor images_lightglue_torch;
-  torch::Tensor images_droid_torch; 
+  torch::Tensor images_lightglue_torch_;
+  torch::Tensor images_droid_torch_;
+  torch::Tensor feature_map_;
+  torch::Tensor net_map_;
+  torch::Tensor context_map_;
 
 private:
   FrameIDType id_;

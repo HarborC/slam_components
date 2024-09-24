@@ -1,4 +1,4 @@
-#include "components/network/droid_net.h"
+#include "components/network/droid_net/droid_net.h"
 
 #include <fstream>
 #include <iostream>
@@ -33,7 +33,7 @@ bool DroidNet::initialize(const cv::FileNode &node) {
   }
 
   droid_fnet_.to(device_);
-	droid_fnet_.eval();
+  droid_fnet_.eval();
 
   if (node["cnet_path"].empty()) {
     std::cerr << "Error: cnet_path is not provided\n";
@@ -50,7 +50,7 @@ bool DroidNet::initialize(const cv::FileNode &node) {
   }
 
   droid_cnet_.to(device_);
-	droid_cnet_.eval();
+  droid_cnet_.eval();
 
   if (node["update_path"].empty()) {
     std::cerr << "Error: update_path is not provided\n";
@@ -67,7 +67,7 @@ bool DroidNet::initialize(const cv::FileNode &node) {
   }
 
   droid_update_.to(device_);
-	droid_update_.eval();
+  droid_update_.eval();
 
   initialized_ = true;
   warmup();

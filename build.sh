@@ -9,7 +9,7 @@ mkdir build
 cd build
 cmake -DCMAKE_PREFIX_PATH="/mnt/i/project/slam/tmp/libtorch/share/cmake" ..
 make -j
-make install
+# make install
 
 # rm -r ../../../tmp/test/*
 # ./slam_components/apps/seq_data_test

@@ -1,7 +1,7 @@
 #pragma once
 
 #include "calibration/calibration.h"
-#include "components/network/droid_net.h"
+#include "components/network/droid_net/droid_net.h"
 #include "components/tracking.h"
 
 namespace slam_components {
