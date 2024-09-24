@@ -9,6 +9,7 @@ Frame::Frame(FrameIDType _id, int _cam_num) : id_(_id) {
   feature_ids_.resize(_cam_num);
   bearings_.resize(_cam_num);
   descriptors_.resize(_cam_num);
+  masks_.resize(_cam_num);
   matched_frames_.resize(_cam_num);
   Tcw_.resize(_cam_num);
 }
@@ -63,7 +64,8 @@ void Frame::setVelocity(const Eigen::Vector3d &vel) {
 void Frame::addData(const std::vector<cv::Mat> &_imgs,
                     const std::vector<std::vector<Eigen::Vector2d>> &_keypoints,
                     const std::vector<std::vector<Eigen::Vector3d>> &_bearings,
-                    const std::vector<cv::Mat> &_descriptors) {
+                    const std::vector<cv::Mat> &_descriptors,
+                    const std::vector<cv::Mat> &_masks) {
   if (_imgs.size()) {
     assert(_imgs.size() == camNum());
     for (size_t i = 0; i < _imgs.size(); ++i) {
@@ -89,37 +91,32 @@ void Frame::addData(const std::vector<cv::Mat> &_imgs,
     assert(_descriptors.size() == camNum());
     descriptors_ = _descriptors;
   }
+
+  if (_masks.size()) {
+    assert(_masks.size() == camNum());
+    for (size_t i = 0; i < _masks.size(); ++i) {
+      masks_[i] = _masks[i].clone();
+    }
+  }
 }
 
-void Frame::extractFeature(const std::vector<cv::Mat> &_imgs,
-                           std::string detector_type,
-                           const std::vector<cv::Mat> &_masks) {
-  assert(_imgs.size() == camNum());
-  if (_masks.size()) {
-    assert(_imgs.size() == _masks.size());
-  }
-
-  int cam_num = camNum();
-  for (size_t cam_id = 0; cam_id < cam_num; ++cam_id) {
-    imgs_[cam_id] = _imgs[cam_id].clone();
-  }
-
+void Frame::extractFeature(std::string detector_type) {
   Detector detector;
-  for (size_t cam_id = 0; cam_id < cam_num; ++cam_id) {
+  for (size_t cam_id = 0; cam_id < camNum(); ++cam_id) {
     std::vector<cv::KeyPoint> kpts;
     if (detector_type == "ORB") {
-      if (_masks.empty()) {
-        detector.detectORB(_imgs[cam_id], kpts, descriptors_[cam_id]);
+      if (masks_.empty()) {
+        detector.detectORB(imgs_[cam_id], kpts, descriptors_[cam_id]);
       } else {
-        detector.detectORB(_imgs[cam_id], kpts, descriptors_[cam_id],
-                           _masks[cam_id]);
+        detector.detectORB(imgs_[cam_id], kpts, descriptors_[cam_id],
+                           masks_[cam_id]);
       }
     } else if (detector_type == "SIFT") {
-      if (_masks.empty()) {
-        detector.detectSIFT(_imgs[cam_id], kpts, descriptors_[cam_id]);
+      if (masks_.empty()) {
+        detector.detectSIFT(imgs_[cam_id], kpts, descriptors_[cam_id]);
       } else {
-        detector.detectSIFT(_imgs[cam_id], kpts, descriptors_[cam_id],
-                            _masks[cam_id]);
+        detector.detectSIFT(imgs_[cam_id], kpts, descriptors_[cam_id],
+                            masks_[cam_id]);
       }
     } else {
       std::cerr << "Unknown detector type: " << detector_type << std::endl;

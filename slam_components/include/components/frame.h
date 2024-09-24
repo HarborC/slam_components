@@ -56,11 +56,10 @@ public:
   void addData(const std::vector<cv::Mat> &_imgs = {},
                const std::vector<std::vector<Eigen::Vector2d>> &_keypoints = {},
                const std::vector<std::vector<Eigen::Vector3d>> &_bearings = {},
-               const std::vector<cv::Mat> &_descriptors = {});
+               const std::vector<cv::Mat> &_descriptors = {},
+               const std::vector<cv::Mat> &_masks = {});
 
-  void extractFeature(const std::vector<cv::Mat> &_imgs,
-                      std::string detector_type = "ORB",
-                      const std::vector<cv::Mat> &_masks = {});
+  void extractFeature(std::string detector_type = "ORB");
 
   cv::Mat drawKeyPoint(const int &cam_id);
 
@@ -94,6 +93,7 @@ private:
   double timestamp_;
   bool is_keyframe_ = false;
   std::vector<cv::Mat> imgs_;
+  std::vector<cv::Mat> masks_;
   std::vector<std::vector<Eigen::Vector2d>> keypoints_;
   std::vector<std::vector<Eigen::Vector3d>> bearings_;
   std::vector<cv::Mat> descriptors_;

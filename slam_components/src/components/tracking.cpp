@@ -50,6 +50,7 @@ bool Tracking::track(const TrackingInput &input) {
 
   if (judgeKeyframe()) {
     extractDenseFeature(curr_frame_);
+    extractSparseFeature(curr_frame_);
     curr_frame_->setKeyFrame(true);
     last_keyframe_ = curr_frame_;
   }
@@ -208,12 +209,15 @@ bool Tracking::motionFilter() {
 
   torch::Tensor delta = outputs->elements()[1].toTensor();
 
-  // 计算 delta 的范数，并检查平均值是否大于阈值
   if (delta.norm(2, -1).mean().item<float>() > motion_filter_thresh_) {
     return true;
   }
 
   return false;
+}
+
+void Tracking::extractSparseFeature(const Frame::Ptr &frame) {
+  frame->extractFeature();
 }
 
 } // namespace slam_components

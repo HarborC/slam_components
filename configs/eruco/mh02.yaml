@@ -6,6 +6,10 @@ Dataset:
   path: "datasets/euroc/mh02"
   start_idx: 800
 
+Visualizer:
+  enable: false
+  port: 8733
+
 Calibration:
   path: "configs/eruco/calibration.yaml"
 
@@ -40,11 +44,6 @@ Frontend:
   only_plot_image: false
   plot_matches: false
   publish_debug: true
-
-Visualizer:
-  enable: false
-  port_num: 8733
-  sleep_time: 5 # second
 
 SlideWindow:
   window_size: 10

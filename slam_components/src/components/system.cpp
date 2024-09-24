@@ -91,9 +91,15 @@ bool System::initialize(const std::string &config_path) {
     return false;
   }
 
+  if (node["Visualizer"].empty() ||
+      !initializeViz(node["Visualizer"])) {
+    std::cerr << "Error: Failed to initialize Visualizer\n";
+    return false;
+  }
+
   if (node["Calibration"].empty() ||
       !initializeCalibration(node["Calibration"])) {
-    std::cerr << "Error: Failed to calibration Network\n";
+    std::cerr << "Error: Failed to initialize calibration\n";
     return false;
   }
 
@@ -144,6 +150,20 @@ bool System::initializeCalibration(const cv::FileNode &node) {
 
   calibration_.reset(new Calibration());
   calibration_->load(std::string(PROJECT_DIR) + calib_file);
+
+  return true;
+}
+
+bool System::initializeViz(const cv::FileNode &node) {
+  if (node["port"].empty()) {
+    std::cerr << "Error: calibration.port is not provided\n";
+    return false;
+  }
+
+  int port;
+  node["port"] >> port;
+
+  viz_server.reset(new foxglove_viz::Visualizer(port));
 
   return true;
 }

@@ -41,6 +41,7 @@ private:
   void propressImage(const Frame::Ptr &frame);
   void extractDenseFeature(const Frame::Ptr &frame,
                            bool only_feature_map = false);
+  void extractSparseFeature(const Frame::Ptr &frame);
   bool motionFilter();
 
 private:
