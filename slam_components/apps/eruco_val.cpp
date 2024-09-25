@@ -16,7 +16,7 @@ int main(int argc, char **argv) {
 
   auto calib = system->getCalibration();
 
-  system->run();
+  system->begin();
 
   for (size_t i = 0; i < dataset.imu_data_vec_.size(); ++i) {
     system->feedIMU(dataset.imu_data_vec_[i].timestamp_,
@@ -29,12 +29,12 @@ int main(int argc, char **argv) {
     for (int cam_id = 0; cam_id < dataset.image_data_vec_[i].data_.size();
          cam_id++) {
       images.push_back(calib->getCamera(cam_id)->readImage(
-          dataset.image_data_vec_[i].data_[i].img_path_));
+          dataset.image_data_vec_[i].data_[cam_id].img_path_));
     }
     system->feedCamera(dataset.image_data_vec_[i].timestamp_, images);
   }
 
-  system->terminate();
+  system->requestFinish();
 
   return 0;
 }

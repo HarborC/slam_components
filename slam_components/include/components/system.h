@@ -29,9 +29,9 @@ public:
 
   bool initialize(const std::string &config_path);
 
-  void run();
+  void begin();
 
-  void terminate();
+  void requestFinish();
 
 private:
   bool initializeNetwork(const cv::FileNode &node);

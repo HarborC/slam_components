@@ -2,7 +2,7 @@
 
 namespace slam_components {
 
-System::~System() { terminate(); }
+System::~System() { requestFinish(); }
 
 void System::feedIMU(const double &timestamp,
                      const Eigen::Vector3d &angular_velocity,
@@ -23,12 +23,12 @@ void System::feedCamera(const double &timestamp,
   feed_mtx.unlock();
 }
 
-void System::run() {
+void System::begin() {
   is_running_ = true;
   loop_thread.reset(new std::thread(&System::processLoop, this));
 }
 
-void System::terminate() {
+void System::requestFinish() {
   is_running_ = false;
   if (loop_thread) {
     loop_thread->join();

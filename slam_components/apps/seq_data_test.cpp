@@ -670,7 +670,8 @@ int main(int argc, char **argv) {
     Eigen::Vector3d twc = Twc.block<3, 1>(0, 3);
     Eigen::Matrix3d Rwc = Twc.block<3, 3>(0, 0);
 
-    std::vector<Eigen::Vector2d> corner_points = camera_model->getCornerPoints();
+    std::vector<Eigen::Vector2d> corner_points =
+        camera_model->getCornerPoints();
     for (int i = 0; i < corner_points.size(); ++i) {
       Eigen::Vector3d bearing;
       camera_model->planeToSpace(corner_points[i], &bearing);
