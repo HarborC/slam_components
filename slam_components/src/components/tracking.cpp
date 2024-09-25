@@ -9,9 +9,11 @@ namespace slam_components {
 
 bool Tracking::initialize(const cv::FileNode &node,
                           const DroidNet::Ptr &droid_net,
-                          const Calibration::Ptr &calibration) {
+                          const Calibration::Ptr &calibration,
+                          const foxglove_viz::Visualizer::Ptr &viz_server) {
   droid_net_ = droid_net;
   calibration_ = calibration;
+  viz_server_ = viz_server;
 
   if (node["motion_filter_thresh"].empty()) {
     std::cerr << "Error: motion_filter_thresh is not provided\n";
@@ -43,6 +45,8 @@ bool Tracking::track(const TrackingInput &input) {
       new Frame(next_frame_id_++, input.camera_data->images_.size()));
   curr_frame_->setTimestamp(input.camera_data->timestamp_);
   curr_frame_->addData(input.camera_data->images_);
+
+  publishRawImage();
 
   estimateInitialPose();
 
@@ -218,6 +222,14 @@ bool Tracking::motionFilter() {
 
 void Tracking::extractSparseFeature(const Frame::Ptr &frame) {
   frame->extractFeature();
+}
+
+void Tracking::publishRawImage() {
+  if (viz_server_) {
+    cv::Mat raw_img = curr_frame_->drawRawImage();
+    viz_server_->showImage("raw_img", int64_t(curr_frame_->timestamp() * 1e6),
+                           raw_img);
+  }
 }
 
 } // namespace slam_components

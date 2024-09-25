@@ -8,6 +8,8 @@
 #include "components/network/droid_net/droid_net.h"
 #include "components/sensor_data.h"
 
+#include "foxglove/visualizer.h"
+
 namespace slam_components {
 
 struct TrackingInput {
@@ -26,7 +28,8 @@ public:
   ~Tracking() {}
 
   bool initialize(const cv::FileNode &node, const DroidNet::Ptr &droid_net,
-                  const Calibration::Ptr &calibration);
+                  const Calibration::Ptr &calibration,
+                  const foxglove_viz::Visualizer::Ptr &viz_server);
 
   bool track(const TrackingInput &input);
 
@@ -44,10 +47,14 @@ private:
   void extractSparseFeature(const Frame::Ptr &frame);
   bool motionFilter();
 
+  void publishRawImage();
+
 private:
   FrameIDType next_frame_id_ = 0;
   DroidNet::Ptr droid_net_;
   Calibration::Ptr calibration_;
+  foxglove_viz::Visualizer::Ptr viz_server_;
+
   Frame::Ptr last_frame_ = nullptr;
   Frame::Ptr last_keyframe_ = nullptr;
   Frame::Ptr curr_frame_ = nullptr;

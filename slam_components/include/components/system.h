@@ -9,8 +9,6 @@
 #include "components/sensor_data.h"
 #include "components/tracking.h"
 
-#include "foxglove/visualizer.h"
-
 namespace slam_components {
 
 class System {
@@ -27,7 +25,13 @@ public:
 
   void feedCamera(const double &timestamp, const std::vector<cv::Mat> &images);
 
+  Calibration::Ptr getCalibration() { return calibration_; }
+
   bool initialize(const std::string &config_path);
+
+  void run();
+
+  void terminate();
 
 private:
   bool initializeNetwork(const cv::FileNode &node);
@@ -42,13 +46,15 @@ private:
   DroidNet::Ptr droid_net_;
   Calibration::Ptr calibration_;
   Tracking::Ptr tracking_;
-  foxglove_viz::Visualizer::Ptr viz_server;
+  foxglove_viz::Visualizer::Ptr viz_server_;
 
   std::deque<IMUData::Ptr> imu_buf_;
   std::deque<CameraData::Ptr> camera_buf_;
 
-  std::mutex feed_mtx;
+  std::mutex feed_mtx, system_mtx;
   std::shared_ptr<std::thread> loop_thread;
+
+  std::atomic<bool> is_running_ = false;
 };
 
 } // namespace slam_components

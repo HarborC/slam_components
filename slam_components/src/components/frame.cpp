@@ -165,4 +165,22 @@ cv::Mat Frame::drawMatchedKeyPoint(const int &cam_id) {
   return img;
 }
 
+cv::Mat Frame::drawRawImage() {
+  cv::Mat all_img;
+  for (size_t i = 0; i < camNum(); ++i) {
+    cv::Mat img_copy = imgs_[i].clone();
+    cv::putText(img_copy, std::to_string(id_) + "-" + std::to_string(i),
+                cv::Point(10, 30), cv::FONT_HERSHEY_SIMPLEX, 1,
+                cv::Scalar(0, 255, 0), 2);
+
+    if (i == 0) {
+      all_img = img_copy;
+    } else {
+      cv::hconcat(all_img, img_copy, all_img);
+    }
+  }
+
+  return all_img;
+}
+
 } // namespace slam_components

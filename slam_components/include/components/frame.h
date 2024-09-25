@@ -61,6 +61,8 @@ public:
 
   void extractFeature(std::string detector_type = "ORB");
 
+  cv::Mat drawRawImage();
+
   cv::Mat drawKeyPoint(const int &cam_id);
 
   cv::Mat drawMatchedKeyPoint(const int &cam_id);

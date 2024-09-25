@@ -2,11 +2,7 @@
 
 namespace slam_components {
 
-System::~System() {
-  if (loop_thread) {
-    loop_thread->join();
-  }
-}
+System::~System() { terminate(); }
 
 void System::feedIMU(const double &timestamp,
                      const Eigen::Vector3d &angular_velocity,
@@ -25,6 +21,18 @@ void System::feedCamera(const double &timestamp,
   feed_mtx.lock();
   camera_buf_.push_back(camera_data);
   feed_mtx.unlock();
+}
+
+void System::run() {
+  is_running_ = true;
+  loop_thread.reset(new std::thread(&System::processLoop, this));
+}
+
+void System::terminate() {
+  is_running_ = false;
+  if (loop_thread) {
+    loop_thread->join();
+  }
 }
 
 bool System::getTrackingInput(TrackingInput &input) {
@@ -78,6 +86,8 @@ void System::processLoop() {
     TrackingInput input;
     if (getTrackingInput(input)) {
       tracking_->track(input);
+    } else if (!is_running_) {
+      break;
     } else {
       std::this_thread::sleep_for(std::chrono::microseconds(10));
     }
@@ -91,8 +101,7 @@ bool System::initialize(const std::string &config_path) {
     return false;
   }
 
-  if (node["Visualizer"].empty() ||
-      !initializeViz(node["Visualizer"])) {
+  if (node["Visualizer"].empty() || !initializeViz(node["Visualizer"])) {
     std::cerr << "Error: Failed to initialize Visualizer\n";
     return false;
   }
@@ -113,13 +122,12 @@ bool System::initialize(const std::string &config_path) {
     return false;
   } else {
     tracking_.reset(new Tracking());
-    if (!tracking_->initialize(node["Tracking"], droid_net_, calibration_)) {
+    if (!tracking_->initialize(node["Tracking"], droid_net_, calibration_,
+                               viz_server_)) {
       std::cerr << "Error: Failed to initialize Tracking\n";
       return false;
     }
   }
-
-  loop_thread.reset(new std::thread(&System::processLoop, this));
 
   return true;
 }
@@ -163,7 +171,7 @@ bool System::initializeViz(const cv::FileNode &node) {
   int port;
   node["port"] >> port;
 
-  viz_server.reset(new foxglove_viz::Visualizer(port));
+  viz_server_.reset(new foxglove_viz::Visualizer(port));
 
   return true;
 }
