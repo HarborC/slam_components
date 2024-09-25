@@ -95,3 +95,4 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${TORCH_CXX_FLAGS}")
 
 find_package(general_camera_model REQUIRED)
 find_package(foxglove_lib REQUIRED)
+find_package(general_dataset REQUIRED)

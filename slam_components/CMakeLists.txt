@@ -10,7 +10,7 @@ file(GLOB SRC
 )
 
 add_library(${PROJECT_NAME} SHARED ${SRC})
-target_link_libraries(${PROJECT_NAME} PUBLIC ${OpenCV_LIBS} ${CERES_LIBRARIES} general_camera_model ${TORCH_LIBRARIES} foxglove_lib)
+target_link_libraries(${PROJECT_NAME} PUBLIC ${OpenCV_LIBS} ${CERES_LIBRARIES} general_camera_model ${TORCH_LIBRARIES} foxglove_lib general_dataset)
 
 target_include_directories(${PROJECT_NAME} PUBLIC 
                            $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
