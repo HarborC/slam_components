@@ -6,6 +6,10 @@ Dataset:
   path: "datasets/euroc/mh02"
   start_idx: 800
 
+Log:
+  path: "/mnt/i/project/slam/tmp/test/log/"
+  enable_std: false
+  
 Visualizer:
   enable: false
   port: 8733

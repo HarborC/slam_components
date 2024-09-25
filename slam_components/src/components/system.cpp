@@ -1,4 +1,30 @@
 #include "components/system.h"
+#include "utils/log_utils.h"
+
+namespace cv {
+// Define a new bool reader in order to accept "true/false"-like values.
+void read_bool(const cv::FileNode &node, bool &value,
+               const bool &default_value) {
+  std::string s(static_cast<std::string>(node));
+  if (s == "y" || s == "Y" || s == "yes" || s == "Yes" || s == "YES" ||
+      s == "true" || s == "True" || s == "TRUE" || s == "on" || s == "On" ||
+      s == "ON") {
+    value = true;
+    return;
+  }
+  if (s == "n" || s == "N" || s == "no" || s == "No" || s == "NO" ||
+      s == "false" || s == "False" || s == "FALSE" || s == "off" ||
+      s == "Off" || s == "OFF") {
+    value = false;
+    return;
+  }
+  value = static_cast<int>(node);
+}
+// Specialize cv::operator>> for bool.
+template <> inline void operator>>(const cv::FileNode &n, bool &value) {
+  read_bool(n, value, false);
+}
+} // namespace cv
 
 namespace slam_components {
 
@@ -101,6 +127,11 @@ bool System::initialize(const std::string &config_path) {
     return false;
   }
 
+  if (node["Log"].empty() || !initializeLog(node["Log"])) {
+    std::cerr << "Error: Failed to initialize Log\n";
+    return false;
+  }
+
   if (node["Visualizer"].empty() || !initializeViz(node["Visualizer"])) {
     std::cerr << "Error: Failed to initialize Visualizer\n";
     return false;
@@ -172,6 +203,27 @@ bool System::initializeViz(const cv::FileNode &node) {
   node["port"] >> port;
 
   viz_server_.reset(new foxglove_viz::Visualizer(port));
+
+  return true;
+}
+
+bool System::initializeLog(const cv::FileNode &node) {
+  if (node["path"].empty()) {
+    std::cerr << "Error: Log.path is not provided\n";
+    return false;
+  }
+
+  std::string path;
+  node["path"] >> path;
+
+  if (node["enable_std"].empty()) {
+    initSpdlog("slam_components", path);
+  } else {
+    bool alsologtostderr;
+    node["enable_std"] >> alsologtostderr;
+    std::cout << "alsologtostderr: " << int(alsologtostderr) << std::endl;
+    initSpdlog("slam_components", path, alsologtostderr);
+  }
 
   return true;
 }

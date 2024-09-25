@@ -81,9 +81,12 @@ include_directories(${EIGEN3_INCLUDE_DIR})
 find_package(PCL REQUIRED)
 include_directories(${PCL_INCLUDE_DIR})
 
+find_package(spdlog REQUIRED)
+
 set(CAFFE2_USE_CUDNN ON)
 set(USE_CUSPARSELT OFF)
 find_package(Torch REQUIRED)
+# add_definitions(-DC10_USE_GLOG)
 
 set(Python_EXECUTABLE /opt/conda/envs/slam4labeling/bin/python)
 find_package(Python COMPONENTS Interpreter Development REQUIRED)

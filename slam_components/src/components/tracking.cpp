@@ -5,6 +5,8 @@
 #include <ATen/autocast_mode.h>
 #include <torch/torch.h>
 
+#include "utils/log_utils.h"
+
 namespace slam_components {
 
 bool Tracking::initialize(const cv::FileNode &node,
@@ -41,24 +43,38 @@ bool Tracking::initialize(const cv::FileNode &node,
 }
 
 bool Tracking::track(const TrackingInput &input) {
+
   curr_frame_.reset(
       new Frame(next_frame_id_++, input.camera_data->images_.size()));
   curr_frame_->setTimestamp(input.camera_data->timestamp_);
   curr_frame_->addData(input.camera_data->images_);
 
+  spdlog::info("Tracking frame: {}", curr_frame_->id());
+
   publishRawImage();
 
-  return true;
+  spdlog::info("publish raw image");
+
+  // return true;
 
   estimateInitialPose();
 
+  spdlog::info("estimate initial pose");
+
   estimateInitialIdepth();
 
+  spdlog::info("estimate initial idepth");
+
   if (judgeKeyframe()) {
+    spdlog::info("keyframe");
     extractDenseFeature(curr_frame_);
+    spdlog::info("extract dense feature");
     extractSparseFeature(curr_frame_);
+    spdlog::info("extract sparse feature");
     curr_frame_->setKeyFrame(true);
     last_keyframe_ = curr_frame_;
+  } else {
+    spdlog::info("not keyframe");
   }
 
   last_frame_ = curr_frame_;
@@ -99,7 +115,9 @@ bool Tracking::judgeKeyframe() {
     return true;
   }
 
+  spdlog::info("judge keyframe");
   extractDenseFeature(curr_frame_, true);
+  spdlog::info("extract dense feature");
   if (motionFilter()) {
     return true;
   }
@@ -176,6 +194,8 @@ void Tracking::extractDenseFeature(const Frame::Ptr &frame,
 }
 
 bool Tracking::motionFilter() {
+  spdlog::info("motion filter");
+
   // 禁用梯度计算
   torch::NoGradGuard no_grad;
 

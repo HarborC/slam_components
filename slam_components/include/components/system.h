@@ -37,6 +37,7 @@ private:
   bool initializeNetwork(const cv::FileNode &node);
   bool initializeCalibration(const cv::FileNode &node);
   bool initializeViz(const cv::FileNode &node);
+  bool initializeLog(const cv::FileNode &node);
 
   bool getTrackingInput(TrackingInput &input);
 
