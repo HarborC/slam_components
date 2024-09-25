@@ -221,7 +221,6 @@ bool System::initializeLog(const cv::FileNode &node) {
   } else {
     bool alsologtostderr;
     node["enable_std"] >> alsologtostderr;
-    std::cout << "alsologtostderr: " << int(alsologtostderr) << std::endl;
     initSpdlog("slam_components", path, alsologtostderr);
   }
 

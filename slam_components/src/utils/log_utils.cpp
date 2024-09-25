@@ -30,7 +30,7 @@ void TimeStatistics::reStart() {
 }
 
 void TimeStatistics::tocAndTic(std::string descri) {
-  spdlog::info("{}", descri);
+  SPDLOG_INFO("{}", descri);
 
   double t = timer.toc();
   timer.tic();
@@ -51,7 +51,7 @@ double TimeStatistics::logTimeStatistics(double time_now) {
     log_msg += fmt::format("{}:{:.6f} ms;", time_descri.at(i), time_cost.at(i));
   }
 
-  spdlog::info("{}", log_msg);
+  SPDLOG_INFO("{}", log_msg);
 
   return t_all;
 }
@@ -102,7 +102,7 @@ void initSpdlog(std::string node_name, std::string &log_path,
                                                  sink_list.end());
 
   // 设置日志格式
-  logger->set_pattern("[%Y-%m-%d %H:%M:%S.%e] [%l] [%n] [%s:%# %!] %v");
+  logger->set_pattern("[%Y-%m-%d %H:%M:%S.%e] [%l] [%n] [%g:%# %!] %v");
 
   // 注册 logger
   spdlog::register_logger(logger);

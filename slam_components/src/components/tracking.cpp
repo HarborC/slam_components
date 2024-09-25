@@ -49,32 +49,32 @@ bool Tracking::track(const TrackingInput &input) {
   curr_frame_->setTimestamp(input.camera_data->timestamp_);
   curr_frame_->addData(input.camera_data->images_);
 
-  spdlog::info("Tracking frame: {}", curr_frame_->id());
+  SPDLOG_INFO("Tracking frame: {}", curr_frame_->id());
 
   publishRawImage();
 
-  spdlog::info("publish raw image");
+  SPDLOG_INFO("publish raw image");
 
   // return true;
 
   estimateInitialPose();
 
-  spdlog::info("estimate initial pose");
+  SPDLOG_INFO("estimate initial pose");
 
   estimateInitialIdepth();
 
-  spdlog::info("estimate initial idepth");
+  SPDLOG_INFO("estimate initial idepth");
 
   if (judgeKeyframe()) {
-    spdlog::info("keyframe");
+    SPDLOG_INFO("keyframe");
     extractDenseFeature(curr_frame_);
-    spdlog::info("extract dense feature");
+    SPDLOG_INFO("extract dense feature");
     extractSparseFeature(curr_frame_);
-    spdlog::info("extract sparse feature");
+    SPDLOG_INFO("extract sparse feature");
     curr_frame_->setKeyFrame(true);
     last_keyframe_ = curr_frame_;
   } else {
-    spdlog::info("not keyframe");
+    SPDLOG_INFO("not keyframe");
   }
 
   last_frame_ = curr_frame_;
@@ -115,9 +115,9 @@ bool Tracking::judgeKeyframe() {
     return true;
   }
 
-  spdlog::info("judge keyframe");
+  SPDLOG_INFO("judge keyframe");
   extractDenseFeature(curr_frame_, true);
-  spdlog::info("extract dense feature");
+  SPDLOG_INFO("extract dense feature");
   if (motionFilter()) {
     return true;
   }
@@ -194,7 +194,7 @@ void Tracking::extractDenseFeature(const Frame::Ptr &frame,
 }
 
 bool Tracking::motionFilter() {
-  spdlog::info("motion filter");
+  SPDLOG_INFO("motion filter");
 
   // 禁用梯度计算
   torch::NoGradGuard no_grad;
@@ -206,12 +206,13 @@ bool Tracking::motionFilter() {
       curr_frame_->images_droid_torch_.size(-1) / image_downsample_scale_;
 
   // 自动混合精度推理
-
   at::autocast::set_autocast_enabled(torch::kCUDA, true);
 
   // 生成坐标网格
   torch::Tensor coords0 =
       getCoordsGrid(ht, wd, droid_net_->device_).unsqueeze(0).unsqueeze(0);
+
+  SPDLOG_INFO("getCoordsGrid");
 
   // 计算相关性
   torch::Tensor corr =
@@ -219,6 +220,8 @@ bool Tracking::motionFilter() {
                     {torch::indexing::Slice(), 0}),
                 last_keyframe_->feature_map_.unsqueeze(0).index(
                     {torch::indexing::Slice(), 0}))(coords0);
+
+  SPDLOG_INFO("CorrBlock");
 
   // 使用 droid_update 计算
   std::vector<torch::jit::IValue> input_tensors;
@@ -228,13 +231,20 @@ bool Tracking::motionFilter() {
       {torch::indexing::Slice(), 0}));
   input_tensors.push_back(corr);
 
+  SPDLOG_INFO("push data");
+
   auto output = this->droid_net_->droid_update_.forward(input_tensors);
+
+  SPDLOG_INFO("update");
+
   auto outputs = output.toTuple();
 
   at::autocast::clear_cache();
   at::autocast::set_autocast_enabled(torch::kCUDA, false);
 
   torch::Tensor delta = outputs->elements()[1].toTensor();
+
+  SPDLOG_INFO("output");
 
   if (delta.norm(2, -1).mean().item<float>() > motion_filter_thresh_) {
     return true;
