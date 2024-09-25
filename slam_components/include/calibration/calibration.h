@@ -5,6 +5,7 @@
 
 class Calibration {
 public:
+  EIGEN_MAKE_ALIGNED_OPERATOR_NEW
   using Ptr = std::shared_ptr<Calibration>;
   Ptr makeShared() { return std::make_shared<Calibration>(*this); }
 
