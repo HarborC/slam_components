@@ -102,7 +102,7 @@ void initSpdlog(std::string node_name, std::string &log_path,
                                                  sink_list.end());
 
   // 设置日志格式
-  logger->set_pattern("[%Y-%m-%d %H:%M:%S.%e] [%l] [%n] [%g:%# %!] %v");
+  logger->set_pattern("[%H:%M:%S.%e][%l][%g:%# %!] %v");
 
   // 注册 logger
   spdlog::register_logger(logger);
