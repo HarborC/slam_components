@@ -62,4 +62,4 @@ include(${PROJECT_SOURCE_DIR}/cmake/find_deps.cmake)
 
 add_subdirectory(slam_components)
 add_subdirectory(test)
-# add_subdirectory(pybind)
+add_subdirectory(pybind)

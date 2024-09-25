@@ -5,6 +5,8 @@
 #include <torch/serialize.h>
 #include <torch/torch.h>
 
+#include "components/network/droid_net/utils.h"
+
 namespace slam_components {
 
 bool DroidNet::initialize(const cv::FileNode &node) {
@@ -78,6 +80,12 @@ bool DroidNet::initialize(const cv::FileNode &node) {
 void DroidNet::warmup() {
   // TODO: Implement warmup
   // Warm up the network
+  printLibtorchVersion();
+  printCudaCuDNNInfo();
+
+  // torch::globalContext().setBenchmarkCuDNN(false);
+  // torch::globalContext().setDeterministicCuDNN(false);
+  // torch::globalContext().setUserEnabledCuDNN(false);
 }
 
 } // namespace slam_components

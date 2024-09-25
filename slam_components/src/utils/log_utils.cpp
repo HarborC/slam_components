@@ -74,6 +74,8 @@ std::string getNowDateTime() {
 
 void initSpdlog(std::string node_name, std::string &log_path,
                 bool alsologtostderr) {
+  std::string raw_log_dir = log_path;
+
   // 创建日志目录路径
   log_path = log_path + "/" + getNowDateTime();
   Utils::CreateRecursiveDirIfNotExists(log_path);
@@ -111,4 +113,17 @@ void initSpdlog(std::string node_name, std::string &log_path,
   // 设置日志级别
   spdlog::set_level(spdlog::level::info); // 默认级别为 INFO
   spdlog::flush_on(spdlog::level::info); // 每条日志输出后立即刷新到文件
+
+  // ------------------------ 创建软链接 ------------------------
+  // 软链接的固定路径，例如：log_dir/latest_log.log
+  std::string symlink_path = raw_log_dir + "/latest_log_info.log";
+
+  // 先删除旧的软链接（如果存在）
+  Utils::DeleteFileIfExists(symlink_path);
+
+  // 创建新的软链接，指向当前日志文件
+  if (symlink((log_path + "/log_info.log").c_str(), symlink_path.c_str()) !=
+      0) {
+    perror("Failed to create symlink");
+  }
 }

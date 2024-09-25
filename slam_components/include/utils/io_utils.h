@@ -4,6 +4,7 @@
 #include <iomanip>
 #include <sstream>
 #include <string>
+#include <unistd.h>
 #include <vector>
 
 #include <boost/algorithm/string.hpp>
@@ -136,6 +137,13 @@ inline bool ExistsPath(const std::string &path) { return fs::exists(path); }
 inline void DeleteDirIfExists(const std::string &path) {
   if (ExistsDir(path)) {
     fs::remove_all(path);
+  }
+}
+
+// Delete the file if it exists.
+inline void DeleteFileIfExists(const std::string &path) {
+  if (ExistsFile(path)) {
+    fs::remove(path);
   }
 }
 

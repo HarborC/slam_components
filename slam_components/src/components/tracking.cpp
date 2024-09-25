@@ -214,21 +214,39 @@ bool Tracking::motionFilter() {
 
   SPDLOG_INFO("getCoordsGrid");
 
+  SPDLOG_INFO("coords0 shape: {}", coords0.sizes());
+
+  SPDLOG_INFO("last_keyframe_->feature_map_ shape: {}",
+              last_keyframe_->feature_map_.sizes());
+
+  SPDLOG_INFO("curr_frame_->feature_map_ shape: {}",
+              curr_frame_->feature_map_.sizes());
+
   // 计算相关性
-  torch::Tensor corr =
-      CorrBlock(last_keyframe_->feature_map_.unsqueeze(0).index(
-                    {torch::indexing::Slice(), 0}),
-                last_keyframe_->feature_map_.unsqueeze(0).index(
-                    {torch::indexing::Slice(), 0}))(coords0);
+  torch::Tensor corr = CorrBlock(
+      last_keyframe_->feature_map_.index({torch::indexing::Slice(0, 1)})
+          .unsqueeze(0),
+      curr_frame_->feature_map_.index({torch::indexing::Slice(0, 1)})
+          .unsqueeze(0))(coords0);
 
   SPDLOG_INFO("CorrBlock");
 
+  SPDLOG_INFO("corr shape: {}", corr.sizes());
+
+  SPDLOG_INFO("last_keyframe_->net_map_ shape: {}",
+              last_keyframe_->net_map_.sizes());
+
+  SPDLOG_INFO("last_keyframe_->context_map_ shape: {}",
+              last_keyframe_->context_map_.sizes());
+
   // 使用 droid_update 计算
   std::vector<torch::jit::IValue> input_tensors;
-  input_tensors.push_back(last_keyframe_->net_map_.unsqueeze(0).index(
-      {torch::indexing::Slice(), 0}));
-  input_tensors.push_back(last_keyframe_->context_map_.unsqueeze(0).index(
-      {torch::indexing::Slice(), 0}));
+  input_tensors.push_back(
+      last_keyframe_->net_map_.index({torch::indexing::Slice(0, 1)})
+          .unsqueeze(0));
+  input_tensors.push_back(
+      last_keyframe_->context_map_.index({torch::indexing::Slice(0, 1)})
+          .unsqueeze(0));
   input_tensors.push_back(corr);
 
   SPDLOG_INFO("push data");

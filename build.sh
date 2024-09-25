@@ -12,7 +12,7 @@ make -j
 make install
 
 # rm -r ../../../tmp/test/*
-# ./slam_components/apps/seq_data_test
+./slam_components/apps/eruco_val
 
 # cd ..
 # rm -rf build

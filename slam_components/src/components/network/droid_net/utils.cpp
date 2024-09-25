@@ -10,7 +10,7 @@ torch::Tensor getCoordsGrid(int64_t ht, int64_t wd, torch::Device device) {
       wd, torch::TensorOptions().device(device).dtype(torch::kFloat32));
 
   // 使用 meshgrid 生成网格
-  std::vector<torch::Tensor> meshgrid = torch::meshgrid({x, y});
+  std::vector<torch::Tensor> meshgrid = torch::meshgrid({x, y}, "ij");
 
   // 获取 x 和 y 的网格
   torch::Tensor x_grid = meshgrid[0];
@@ -23,6 +23,22 @@ torch::Tensor getCoordsGrid(int64_t ht, int64_t wd, torch::Device device) {
   torch::Tensor stacked_grid = torch::stack({x_grid, y_grid}, -1);
 
   return stacked_grid;
+}
+
+void printLibtorchVersion() {
+  std::cout << "PyTorch version: " << TORCH_VERSION_MAJOR << "."
+            << TORCH_VERSION_MINOR << "." << TORCH_VERSION_PATCH << std::endl;
+}
+
+void printCudaCuDNNInfo() {
+  long cudnn_version = at::detail::getCUDAHooks().versionCuDNN();
+  std::cout << "The cuDNN version is " << cudnn_version << "\n";
+  int runtimeVersion;
+  AT_CUDA_CHECK(cudaRuntimeGetVersion(&runtimeVersion));
+  std::cout << "The CUDA runtime version is " << runtimeVersion << "\n";
+  int version;
+  AT_CUDA_CHECK(cudaDriverGetVersion(&version));
+  std::cout << "The driver version is " << version << "\n";
 }
 
 } // namespace slam_components

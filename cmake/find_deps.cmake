@@ -88,6 +88,17 @@ set(USE_CUSPARSELT OFF)
 find_package(Torch REQUIRED)
 # add_definitions(-DC10_USE_GLOG)
 
+set(CUDNN_LIBRARY 
+/usr/lib/libcudnn_adv.so.9
+/usr/lib/libcudnn_cnn.so.9
+/usr/lib/libcudnn_engines_precompiled.so.9
+/usr/lib/libcudnn_engines_runtime_compiled.so.9
+/usr/lib/libcudnn_graph.so.9
+/usr/lib/libcudnn_heuristic.so.9
+/usr/lib/libcudnn_ops.so.9
+/usr/lib/libcudnn.so.9
+)
+
 set(Python_EXECUTABLE /opt/conda/envs/slam4labeling/bin/python)
 find_package(Python COMPONENTS Interpreter Development REQUIRED)
 include_directories(${Python_INCLUDE_DIRS})
