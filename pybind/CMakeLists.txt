@@ -12,6 +12,6 @@ message(STATUS "Numpy include dir: ${NUMPY_INCLUDE_DIR}")
 include_directories("${NUMPY_INCLUDE_DIR}")
 
 pybind11_add_module(pyslamcpts slamcpts_binds.cpp ndarray_converter.cpp)
-target_link_libraries(pyslamcpts PUBLIC ${PYTHON_LIBRARIES} ${PROJECT_NAME} pthread)
+target_link_libraries(pyslamcpts PUBLIC ${PYTHON_LIBRARIES} sparse_map pthread)
 install(TARGETS pyslamcpts
         LIBRARY DESTINATION ${CMAKE_INSTALL_PREFIX}/lib)

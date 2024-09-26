@@ -2,6 +2,26 @@ include_directories(
   ${CMAKE_CURRENT_SOURCE_DIR}/include
 )
 
+file(GLOB SM_SRC
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/sparse_map/*.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/calibration/*.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/utils/*.cpp
+)
+
+add_library(sparse_map SHARED ${SM_SRC})
+target_link_libraries(sparse_map PUBLIC 
+  ${OpenCV_LIBS} 
+  ${CERES_LIBRARIES} 
+  general_camera_model 
+  foxglove_lib )
+target_include_directories(sparse_map PUBLIC 
+                           $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+                           $<INSTALL_INTERFACE:include>)
+
+target_compile_features(sparse_map PRIVATE cxx_std_17)
+set_property(TARGET sparse_map PROPERTY CXX_STANDARD 17)
+target_compile_definitions(sparse_map PUBLIC PROJECT_DIR="${PROJECT_SOURCE_DIR}/")
+
 file(GLOB SRC
   # ${CMAKE_CURRENT_SOURCE_DIR}/src/sparse_map/*.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/src/calibration/*.cpp
@@ -18,7 +38,8 @@ target_link_libraries(${PROJECT_NAME} PUBLIC
   ${TORCH_LIBRARIES} 
   foxglove_lib 
   general_dataset 
-  spdlog::spdlog)
+  spdlog::spdlog
+  torch::cudnn)
 target_include_directories(${PROJECT_NAME} PUBLIC 
                            $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
                            $<INSTALL_INTERFACE:include>)

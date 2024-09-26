@@ -88,16 +88,19 @@ set(USE_CUSPARSELT OFF)
 find_package(Torch REQUIRED)
 # add_definitions(-DC10_USE_GLOG)
 
-set(CUDNN_LIBRARY 
-/usr/lib/libcudnn_adv.so.9
-/usr/lib/libcudnn_cnn.so.9
-/usr/lib/libcudnn_engines_precompiled.so.9
-/usr/lib/libcudnn_engines_runtime_compiled.so.9
-/usr/lib/libcudnn_graph.so.9
-/usr/lib/libcudnn_heuristic.so.9
-/usr/lib/libcudnn_ops.so.9
-/usr/lib/libcudnn.so.9
-)
+include_directories(${CUDA_INCLUDE_DIRS})
+
+message(STATUS "CUDA_VERSION: ${CUDA_VERSION}")
+message(STATUS "CUDA_INCLUDE_DIRS: ${CUDA_INCLUDE_DIRS}")
+message(STATUS "CUDA_LIBRARIES: ${CUDA_LIBRARIES}")
+message(STATUS "CUDA_TOOLKIT_ROOT_DIR: ${CUDA_TOOLKIT_ROOT_DIR}")
+message(STATUS "TORCH_INCLUDE_DIRS: ${TORCH_INCLUDE_DIRS}")
+message(STATUS "TORCH_LIBRARIES: ${TORCH_LIBRARIES}")
+message(STATUS "CUDNN_INCLUDE_PATH: ${CUDNN_INCLUDE_PATH}")
+message(STATUS "CUDNN_LIBRARY_PATH: ${CUDNN_LIBRARY_PATH}")
+message(STATUS "CUDNN_LIBNAME: ${CUDNN_LIBNAME}")
+message(STATUS "CUDNN_LIBRARY: ${CUDNN_LIBRARY}")
+message(STATUS "CUDNN_VERSION: ${CUDNN_VERSION}")
 
 set(Python_EXECUTABLE /opt/conda/envs/slam4labeling/bin/python)
 find_package(Python COMPONENTS Interpreter Development REQUIRED)
