@@ -7,8 +7,8 @@ cd ${BASE_DIR}/
 
 mkdir build
 cd build
-cmake ..
-make -j
+cmake -DCMAKE_PREFIX_PATH=/mnt/g/projects/slam/tmp/libtorch .. 
+make -j 
 make install
 
 # rm -r ../../../tmp/test/*

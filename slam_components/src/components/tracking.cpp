@@ -159,7 +159,7 @@ void Tracking::extractDenseFeature(const Frame::Ptr &frame,
   torch::NoGradGuard no_grad;
 
   // 自动混合精度推理
-  at::autocast::set_autocast_enabled(torch::kCUDA, true);
+  at::autocast::set_autocast_cache_enabled(true);
 
   // 检查图像是否已预处理
   if (!frame->images_droid_torch_.defined()) {
@@ -190,7 +190,7 @@ void Tracking::extractDenseFeature(const Frame::Ptr &frame,
   }
 
   at::autocast::clear_cache();
-  at::autocast::set_autocast_enabled(torch::kCUDA, false);
+  at::autocast::set_autocast_cache_enabled(false);;
 }
 
 bool Tracking::motionFilter() {
@@ -206,7 +206,7 @@ bool Tracking::motionFilter() {
       curr_frame_->images_droid_torch_.size(-1) / image_downsample_scale_;
 
   // 自动混合精度推理
-  at::autocast::set_autocast_enabled(torch::kCUDA, true);
+  at::autocast::set_autocast_cache_enabled(true);
 
   // 生成坐标网格
   torch::Tensor coords0 =
@@ -258,7 +258,7 @@ bool Tracking::motionFilter() {
   auto outputs = output.toTuple();
 
   at::autocast::clear_cache();
-  at::autocast::set_autocast_enabled(torch::kCUDA, false);
+  at::autocast::set_autocast_cache_enabled(false);;
 
   torch::Tensor delta = outputs->elements()[1].toTensor();
 

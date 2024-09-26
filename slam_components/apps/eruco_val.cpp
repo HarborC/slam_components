@@ -6,7 +6,7 @@ int main(int argc, char **argv) {
       std::string(PROJECT_DIR) + "/configs/eruco/mh02.yaml";
 
   general_dataset::ErucoDataset dataset;
-  dataset.read("/mnt/i/project/slam/datasets/euroc/mh02/mav0");
+  dataset.read("/mnt/g/projects/slam/datasets/euroc/mh02/mav0");
 
   slam_components::System::Ptr system(new slam_components::System());
   if (!system->initialize(config_file)) {
