@@ -8,7 +8,7 @@ file(GLOB SM_SRC
   ${CMAKE_CURRENT_SOURCE_DIR}/src/utils/*.cpp
 )
 
-add_library(sparse_map SHARED ${SM_SRC})
+add_library(sparse_map STATIC ${SM_SRC})
 target_link_libraries(sparse_map PUBLIC 
   ${OpenCV_LIBS} 
   ${CERES_LIBRARIES} 
@@ -22,6 +22,23 @@ target_compile_features(sparse_map PRIVATE cxx_std_17)
 set_property(TARGET sparse_map PROPERTY CXX_STANDARD 17)
 target_compile_definitions(sparse_map PUBLIC PROJECT_DIR="${PROJECT_SOURCE_DIR}/")
 
+install(TARGETS sparse_map
+    LIBRARY DESTINATION lib
+    RUNTIME DESTINATION bin
+)
+
+install(TARGETS sparse_map
+        EXPORT sparse_map-targets
+        ARCHIVE DESTINATION lib
+        LIBRARY DESTINATION lib
+        RUNTIME DESTINATION bin
+        )
+
+install(EXPORT sparse_map-targets
+        FILE sparse_map-config.cmake
+        DESTINATION share/cmake/sparse_map/
+     )
+
 file(GLOB SRC
   # ${CMAKE_CURRENT_SOURCE_DIR}/src/sparse_map/*.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/src/calibration/*.cpp
@@ -30,7 +47,7 @@ file(GLOB SRC
   ${CMAKE_CURRENT_SOURCE_DIR}/src/utils/*.cpp
 )
 
-add_library(${PROJECT_NAME} SHARED ${SRC})
+add_library(${PROJECT_NAME} STATIC ${SRC})
 target_link_libraries(${PROJECT_NAME} PUBLIC 
   ${OpenCV_LIBS} 
   ${CERES_LIBRARIES} 
@@ -38,8 +55,7 @@ target_link_libraries(${PROJECT_NAME} PUBLIC
   ${TORCH_LIBRARIES} 
   foxglove_lib 
   general_dataset 
-  spdlog::spdlog
-  torch::cudnn)
+  spdlog::spdlog)
 target_include_directories(${PROJECT_NAME} PUBLIC 
                            $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
                            $<INSTALL_INTERFACE:include>)

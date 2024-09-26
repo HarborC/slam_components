@@ -10,4 +10,4 @@ target_link_libraries(eruco_val PUBLIC ${PROJECT_NAME})
 
 
 add_executable(cudnn_test cudnn_test.cpp)
-target_link_libraries(cudnn_test PUBLIC ${CUDA_LIBRARY} ${PROJECT_NAME})
+target_link_libraries(cudnn_test PUBLIC ${PROJECT_NAME})

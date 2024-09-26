@@ -1,20 +1,34 @@
+#include <torch/torch.h>
 #include <iostream>
-#include <cudnn.h>
 
 int main() {
-    cudnnHandle_t cudnn;
-    cudnnStatus_t status = cudnnCreate(&cudnn);
-    
-    if (status != CUDNN_STATUS_SUCCESS) {
-        std::cerr << "cuDNN initialization failed: " << cudnnGetErrorString(status) << std::endl;
-        return 1;
+
+    if (torch::cuda::is_available()) {
+        std::cout << "CUDA is available!" << std::endl;
+
+        // 检查是否支持 cuDNN
+        if (torch::cuda::cudnn_is_available()) {
+            std::cout << "cuDNN is available!" << std::endl;
+        } else {
+            std::cout << "cuDNN is not available." << std::endl;
+        }
+    } else {
+        std::cout << "CUDA is not available." << std::endl;
     }
 
-    int version = cudnnGetVersion();
-    std::cout << "cuDNN version: " << version << std::endl;
+    // cudnnHandle_t cudnn;
+    // cudnnStatus_t status = cudnnCreate(&cudnn);
+    
+    // if (status != CUDNN_STATUS_SUCCESS) {
+    //     std::cerr << "cuDNN initialization failed: " << cudnnGetErrorString(status) << std::endl;
+    //     return 1;
+    // }
 
-    // Clean up
-    // cudnnDestroy(cudnn);
+    // int version = cudnnGetVersion();
+    // std::cout << "cuDNN version: " << version << std::endl;
+
+    // // Clean up
+    // // cudnnDestroy(cudnn);
 
     return 0;
 }
