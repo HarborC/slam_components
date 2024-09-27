@@ -65,7 +65,7 @@ void SuperpointNet::warmup() {
   // Implement warmup
   // Warm up the network
   {
-    torch::Tensor x0 = torch::randn({1, 1, 480, 752}).to(device_);
+    torch::Tensor x0 = torch::randn({1, 2, 480, 752}).to(device_);
     net_->forward(x0, nms_radius_, max_num_keypoints_, detection_threshold_,
                   remove_borders_);
   }

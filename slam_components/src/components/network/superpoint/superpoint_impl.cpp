@@ -167,8 +167,10 @@ SuperPointImpl::forward(torch::Tensor x, int nms_radius, int max_num_keypoints,
   int64_t w = scores.size(3); // width
 
   // Permute and reshape scores
-  scores = scores.permute({0, 2, 3, 1}).reshape({b, h, w, 8, 8});
-  scores = scores.permute({0, 1, 3, 2, 4}).reshape({b, h * 8, w * 8});
+  scores = scores.permute({0, 2, 3, 1})
+               .reshape({b, h, w, 8, 8})
+               .permute({0, 1, 3, 2, 4})
+               .reshape({b, h * 8, w * 8});
 
   // Apply simple NMS
   scores = simpleNMS(scores, nms_radius);
