@@ -74,9 +74,9 @@ Frame::Ptr Tracking::process(const TrackingInput &input) {
   tracking_statistics.tocAndTic("propress image");
 
   bool is_keyframe = judgeKeyframe();
-  tracking_statistics.tocAndTic("judge keyframe");
-
   if (is_keyframe) {
+    tracking_statistics.tocAndTic("judge keyframe");
+
     curr_frame_->setKeyFrame(true);
 
     extractDenseFeature(curr_frame_);
