@@ -73,8 +73,10 @@ Frame::Ptr Tracking::process(const TrackingInput &input) {
 
   tracking_statistics.tocAndTic("propress image");
 
-  if (judgeKeyframe()) {
-    tracking_statistics.tocAndTic("judge keyframe");
+  bool is_keyframe = judgeKeyframe();
+  tracking_statistics.tocAndTic("judge keyframe");
+
+  if (is_keyframe) {
     curr_frame_->setKeyFrame(true);
 
     extractDenseFeature(curr_frame_);
@@ -90,11 +92,6 @@ Frame::Ptr Tracking::process(const TrackingInput &input) {
     tracking_statistics.tocAndTic("publish raw image");
 
     last_keyframe_ = curr_frame_;
-    last_frame_ = curr_frame_;
-
-    tracking_statistics.logTimeStatistics(curr_frame_->id());
-
-    return curr_frame_;
   } else {
     tracking_statistics.tocAndTic("judge nonkeyframe");
   }
@@ -108,7 +105,11 @@ Frame::Ptr Tracking::process(const TrackingInput &input) {
   SPDLOG_INFO("Tracking process average time: {} ms",
               process_total_time / process_total_count);
 
-  return nullptr;
+  if (is_keyframe) {
+    return curr_frame_;
+  } else {
+    return nullptr;
+  }
 }
 
 void Tracking::estimateInitialPose() {
