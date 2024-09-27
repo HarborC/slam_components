@@ -10,7 +10,7 @@ torch::Tensor getCoordsGrid(int64_t ht, int64_t wd, torch::Device device) {
       wd, torch::TensorOptions().device(device).dtype(torch::kFloat32));
 
   // 使用 meshgrid 生成网格
-  std::vector<torch::Tensor> meshgrid = torch::meshgrid({x, y}, "ij");
+  std::vector<torch::Tensor> meshgrid = torch::meshgrid({x, y}, "xy");
 
   // 获取 x 和 y 的网格
   torch::Tensor x_grid = meshgrid[0];

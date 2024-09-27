@@ -74,6 +74,8 @@ bool DroidNet::initialize(const cv::FileNode &node) {
   initialized_ = true;
   warmup();
 
+  std::cout << "DroidNet initialized\n";
+
   return true;
 }
 
@@ -83,9 +85,29 @@ void DroidNet::warmup() {
   printLibtorchVersion();
   printCudaCuDNNInfo();
 
-  // torch::globalContext().setBenchmarkCuDNN(false);
-  // torch::globalContext().setDeterministicCuDNN(false);
-  // torch::globalContext().setUserEnabledCuDNN(false);
+  torch::globalContext().setBenchmarkCuDNN(true);
+  // torch::globalContext().setDeterministicCuDNN(true);
+  torch::globalContext().setUserEnabledCuDNN(true);
+
+  // Warm up the network
+  {
+    torch::Tensor x0 = torch::randn({1, 2, 3, 480, 752}).to(device_);
+    std::vector<torch::jit::IValue> input_tensors;
+    input_tensors.push_back(x0);
+    droid_fnet_.forward(input_tensors);
+    droid_cnet_.forward(input_tensors);
+  } 
+  
+  {
+    torch::Tensor x1 = torch::randn({1, 2, 128, 60, 94}).to(device_);
+    torch::Tensor x2 = torch::randn({1, 2, 128, 60, 94}).to(device_);
+    torch::Tensor x3 = torch::randn({1, 2, 196, 60, 94}).to(device_);
+    std::vector<torch::jit::IValue> input_tensors;
+    input_tensors.push_back(x1);
+    input_tensors.push_back(x2);
+    input_tensors.push_back(x3);
+    droid_update_.forward(input_tensors);
+  }
 }
 
 } // namespace slam_components

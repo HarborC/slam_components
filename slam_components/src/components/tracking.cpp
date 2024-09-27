@@ -51,12 +51,6 @@ bool Tracking::track(const TrackingInput &input) {
 
   SPDLOG_INFO("Tracking frame: {}", curr_frame_->id());
 
-  publishRawImage();
-
-  SPDLOG_INFO("publish raw image");
-
-  // return true;
-
   estimateInitialPose();
 
   SPDLOG_INFO("estimate initial pose");
@@ -73,6 +67,7 @@ bool Tracking::track(const TrackingInput &input) {
     SPDLOG_INFO("extract sparse feature");
     curr_frame_->setKeyFrame(true);
     last_keyframe_ = curr_frame_;
+    publishRawImage();
   } else {
     SPDLOG_INFO("not keyframe");
   }
@@ -168,6 +163,7 @@ void Tracking::extractDenseFeature(const Frame::Ptr &frame,
 
   // 提取 feature map
   if (!frame->feature_map_.defined()) {
+    SPDLOG_INFO("images_droid_torch_ shape: {}", frame->images_droid_torch_.sizes());
     std::vector<torch::jit::IValue> input_tensors;
     input_tensors.push_back(frame->images_droid_torch_);
     frame->feature_map_ = this->droid_net_->droid_fnet_.forward(input_tensors)
