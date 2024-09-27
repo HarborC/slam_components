@@ -63,11 +63,12 @@ torch::Tensor maxPool(torch::Tensor x, int nms_radius) {
                            /* padding */ {nms_radius, nms_radius});
 }
 
-torch::Tensor rgb2Grayscale(const torch::Tensor &image) {
+torch::Tensor rgb2Grayscale(torch::Tensor image) {
   if (image.size(1) == 3) {
-    return 0.2989 * image.select(1, 0) + // R 通道
-           0.5870 * image.select(1, 1) + // G 通道
-           0.1140 * image.select(1, 2);  // B 通道
+    // R + G + B
+    return (0.2989 * image.select(1, 0) + 0.5870 * image.select(1, 1) +
+            0.1140 * image.select(1, 2))
+        .unsqueeze(1);
   }
   return image;
 }
@@ -151,7 +152,7 @@ SuperPointImpl::forward(torch::Tensor x, int nms_radius, int max_num_keypoints,
                         float detection_threshold, int remove_borders) {
   x = rgb2Grayscale(x);
 
-  SPDLOG_INFO("SuperPoint forward");
+  // SPDLOG_INFO("SuperPoint forward");
   x = relu(conv1a(x));
   x = relu(conv1b(x));
   x = pool(x);
