@@ -2,9 +2,10 @@
 
 #include <memory>
 #include <torch/cuda.h>
-#include <torch/script.h>
 
 #include <opencv2/opencv.hpp>
+
+#include "components/network/superpoint/superpoint_impl.h"
 
 namespace slam_components {
 
@@ -23,8 +24,14 @@ public:
 
 public:
   bool initialized_ = false;
-  torch::jit::script::Module net_;
+  SuperPoint net_;
   torch::Device device_ = torch::Device(torch::kCUDA);
+  torch::Tensor param_inputs_;
+
+  int nms_radius_ = 4;
+  int max_num_keypoints_ = -1;
+  double detection_threshold_ = 0.0005;
+  int remove_borders_ = 4;
 };
 
 } // namespace slam_components

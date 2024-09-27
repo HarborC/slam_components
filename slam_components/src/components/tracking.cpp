@@ -159,7 +159,7 @@ void Tracking::propressImage(const Frame::Ptr &frame) {
 void Tracking::extractDenseFeature(const Frame::Ptr &frame,
                                    bool only_feature_map) {
   // 禁用梯度计算
-  torch::NoGradGuard no_grad;
+  // torch::NoGradGuard no_grad;
 
   // 自动混合精度推理
   at::autocast::set_autocast_cache_enabled(true);
@@ -204,7 +204,7 @@ bool Tracking::motionFilter() {
   // SPDLOG_INFO("motion filter");
 
   // 禁用梯度计算
-  torch::NoGradGuard no_grad;
+  // torch::NoGradGuard no_grad;
 
   // 计算 ht 和 wd
   int64_t ht =

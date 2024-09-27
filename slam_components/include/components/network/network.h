@@ -25,8 +25,8 @@ public:
   void warmup();
 
 public:
-  DroidNet::Ptr droid_net_;
-  SuperpointNet::Ptr superpoint_net_;
+  DroidNet::Ptr droid_net_ = nullptr;
+  SuperpointNet::Ptr superpoint_net_ = nullptr;
 };
 
 } // namespace slam_components

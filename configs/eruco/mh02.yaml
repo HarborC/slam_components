@@ -24,7 +24,7 @@ Network:
     update_path: "checkpoints/droid_update.pt"
   superpoint:
     net_path: "checkpoints/superpoint.pt"
-    max_keypoints: 512
+    max_num_keypoints: 512
 
 Tracking:
   motion_filter_thresh: 2.5

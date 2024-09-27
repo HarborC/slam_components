@@ -11,8 +11,6 @@
 namespace slam_components {
 
 bool DroidNet::initialize(const cv::FileNode &node) {
-  torch::NoGradGuard no_grad;
-
   device_ = torch::Device(torch::kCUDA);
   if (!torch::cuda::is_available()) {
     SPDLOG_WARN("CUDA is not available, using CPU instead.");
@@ -80,15 +78,6 @@ bool DroidNet::initialize(const cv::FileNode &node) {
 }
 
 void DroidNet::warmup() {
-  // Implement warmup
-  // Warm up the network
-  printLibtorchVersion();
-  printCudaCuDNNInfo();
-
-  torch::globalContext().setBenchmarkCuDNN(true);
-  // torch::globalContext().setDeterministicCuDNN(true);
-  torch::globalContext().setUserEnabledCuDNN(true);
-
   // Warm up the network
   {
     torch::Tensor x0 = torch::randn({1, 2, 3, 480, 752}).to(device_);

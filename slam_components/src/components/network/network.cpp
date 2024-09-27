@@ -16,6 +16,7 @@ bool Network::initialize(const cv::FileNode &node) {
   torch::globalContext().setBenchmarkCuDNN(true);
   // torch::globalContext().setDeterministicCuDNN(true);
   torch::globalContext().setUserEnabledCuDNN(true);
+  torch::autograd::GradMode::set_enabled(false);
 
   if (node["droid"].empty()) {
     SPDLOG_CRITICAL("droid is not provided");
@@ -39,13 +40,17 @@ bool Network::initialize(const cv::FileNode &node) {
     return false;
   }
 
+  warmup();
+
   return true;
 }
 
 void Network::warmup() {
   // Implement warmup
-  droid_net_->warmup();
-  superpoint_net_->warmup();
+  if (droid_net_)
+    droid_net_->warmup();
+  if (superpoint_net_)
+    superpoint_net_->warmup();
 }
 
 } // namespace slam_components

@@ -13,7 +13,8 @@ target_link_libraries(sparse_map PUBLIC
   ${OpenCV_LIBS} 
   ${CERES_LIBRARIES} 
   general_camera_model 
-  foxglove_lib )
+  foxglove_lib 
+  spdlog::spdlog)
 target_include_directories(sparse_map PUBLIC 
                            $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
                            $<INSTALL_INTERFACE:include>)
