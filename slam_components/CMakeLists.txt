@@ -43,7 +43,9 @@ file(GLOB SRC
   # ${CMAKE_CURRENT_SOURCE_DIR}/src/sparse_map/*.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/src/calibration/*.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/src/components/*.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/src/components/network/droid_net/*
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/components/network/droid/*
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/components/network/superpoint/*
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/components/network/*.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/src/utils/*.cpp
 )
 

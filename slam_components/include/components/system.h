@@ -6,7 +6,7 @@
 
 #include "calibration/calibration.h"
 #include "components/local_mapping.h"
-#include "components/network/droid_net/droid_net.h"
+#include "components/network/network.h"
 #include "components/sensor_data.h"
 #include "components/tracking.h"
 
@@ -45,7 +45,7 @@ private:
   void processLoop();
 
 private:
-  DroidNet::Ptr droid_net_;
+  Network::Ptr network_;
   Calibration::Ptr calibration_;
   Tracking::Ptr tracking_;
   LocalMapping::Ptr local_mapping_;

@@ -1,6 +1,6 @@
 #include "components/tracking.h"
-#include "components/network/droid_net/corr.h"
-#include "components/network/droid_net/utils.h"
+#include "components/network/droid/corr.h"
+#include "components/network/utils.h"
 
 #include <ATen/autocast_mode.h>
 #include <torch/torch.h>
@@ -9,11 +9,10 @@
 
 namespace slam_components {
 
-bool Tracking::initialize(const cv::FileNode &node,
-                          const DroidNet::Ptr &droid_net,
+bool Tracking::initialize(const cv::FileNode &node, const Network::Ptr &network,
                           const Calibration::Ptr &calibration,
                           const foxglove_viz::Visualizer::Ptr &viz_server) {
-  droid_net_ = droid_net;
+  network_ = network;
   calibration_ = calibration;
   viz_server_ = viz_server;
 
@@ -34,10 +33,10 @@ bool Tracking::initialize(const cv::FileNode &node,
   // hyper parameters
   MEAN = torch::tensor({0.485, 0.456, 0.406})
              .view({3, 1, 1})
-             .to(droid_net_->device_);
+             .to(network_->droid_net_->device_);
   STDV = torch::tensor({0.229, 0.224, 0.225})
              .view({3, 1, 1})
-             .to(droid_net_->device_);
+             .to(network_->droid_net_->device_);
 
   printSetting();
 
@@ -144,12 +143,13 @@ void Tracking::propressImage(const Frame::Ptr &frame) {
     images.push_back(img_tensor);
   }
 
-  torch::Tensor images_tensor = torch::stack(images)
-                                    .permute({0, 3, 1, 2})
-                                    .to(droid_net_->device_, torch::kFloat32);
+  torch::Tensor images_tensor =
+      torch::stack(images)
+          .permute({0, 3, 1, 2})
+          .to(network_->droid_net_->device_, torch::kFloat32);
   images_tensor =
       images_tensor.index({torch::indexing::Slice(), torch::tensor({2, 1, 0})})
-          .to(droid_net_->device_) /
+          .to(network_->droid_net_->device_) /
       255.0;
 
   frame->images_lightglue_torch_ = images_tensor;
@@ -173,9 +173,10 @@ void Tracking::extractDenseFeature(const Frame::Ptr &frame,
   if (!frame->feature_map_.defined()) {
     std::vector<torch::jit::IValue> input_tensors;
     input_tensors.push_back(frame->images_droid_torch_);
-    frame->feature_map_ = this->droid_net_->droid_fnet_.forward(input_tensors)
-                              .toTensor()
-                              .squeeze(0);
+    frame->feature_map_ =
+        this->network_->droid_net_->droid_fnet_.forward(input_tensors)
+            .toTensor()
+            .squeeze(0);
   }
 
   // 如果需要提取 context map 和 net map
@@ -184,12 +185,15 @@ void Tracking::extractDenseFeature(const Frame::Ptr &frame,
     std::vector<torch::jit::IValue> input_tensors;
     input_tensors.push_back(frame->images_droid_torch_);
     torch::Tensor output =
-        this->droid_net_->droid_cnet_.forward(input_tensors).toTensor();
+        this->network_->droid_net_->droid_cnet_.forward(input_tensors)
+            .toTensor();
     auto tensors = output.split_with_sizes({128, 128}, 2);
 
     // 保存 net_map 和 context_map
     frame->net_map_ = tensors[0].tanh().squeeze(0);
     frame->context_map_ = tensors[1].relu().squeeze(0);
+
+    frame->images_droid_torch_.reset();
   }
 
   at::autocast::clear_cache();
@@ -212,8 +216,9 @@ bool Tracking::motionFilter() {
   at::autocast::set_autocast_cache_enabled(true);
 
   // 生成坐标网格
-  torch::Tensor coords0 =
-      getCoordsGrid(ht, wd, droid_net_->device_).unsqueeze(0).unsqueeze(0);
+  torch::Tensor coords0 = getCoordsGrid(ht, wd, network_->droid_net_->device_)
+                              .unsqueeze(0)
+                              .unsqueeze(0);
 
   // SPDLOG_INFO("getCoordsGrid");
 
@@ -254,7 +259,8 @@ bool Tracking::motionFilter() {
 
   // SPDLOG_INFO("push data");
 
-  auto output = this->droid_net_->droid_update_.forward(input_tensors);
+  auto output =
+      this->network_->droid_net_->droid_update_.forward(input_tensors);
 
   // SPDLOG_INFO("update");
 
@@ -282,7 +288,7 @@ void Tracking::extractSparseFeature(const Frame::Ptr &frame) {
 void Tracking::publishRawImage() {
   if (viz_server_) {
     cv::Mat raw_img = curr_frame_->drawRawImage();
-    viz_server_->showImage("keyframe/raw_images",
+    viz_server_->showImage("curr_keyframe/raw_images",
                            int64_t(curr_frame_->timestamp() * 1e6), raw_img);
   }
 }

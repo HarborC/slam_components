@@ -5,7 +5,7 @@
 
 #include "calibration/calibration.h"
 #include "components/frame.h"
-#include "components/network/droid_net/droid_net.h"
+#include "components/network/network.h"
 #include "components/sensor_data.h"
 
 #include "foxglove/visualizer.h"
@@ -27,7 +27,7 @@ public:
   Tracking() = default;
   ~Tracking() {}
 
-  bool initialize(const cv::FileNode &node, const DroidNet::Ptr &droid_net,
+  bool initialize(const cv::FileNode &node, const Network::Ptr &network,
                   const Calibration::Ptr &calibration,
                   const foxglove_viz::Visualizer::Ptr &viz_server);
 
@@ -52,7 +52,7 @@ private:
 
 private:
   FrameIDType next_frame_id_ = 0;
-  DroidNet::Ptr droid_net_;
+  Network::Ptr network_;
   Calibration::Ptr calibration_;
   foxglove_viz::Visualizer::Ptr viz_server_;
 

@@ -18,12 +18,12 @@ Calibration:
   path: "configs/eruco/calibration.yaml"
 
 Network:
-  droidnet:
+  droid:
     fnet_path: "checkpoints/droid_fnet.pt"
     cnet_path: "checkpoints/droid_cnet.pt"
     update_path: "checkpoints/droid_update.pt"
-  lightglue:
-    keypoint_type: "superpoint"
+  superpoint:
+    net_path: "checkpoints/superpoint.pt"
     max_keypoints: 512
 
 Tracking:

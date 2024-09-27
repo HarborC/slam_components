@@ -1,4 +1,5 @@
 #include "components/system.h"
+#include "components/network/utils.h"
 #include "utils/log_utils.h"
 
 namespace slam_components {
@@ -132,7 +133,7 @@ bool System::initialize(const std::string &config_path) {
     return false;
   } else {
     tracking_.reset(new Tracking());
-    if (!tracking_->initialize(node["Tracking"], droid_net_, calibration_,
+    if (!tracking_->initialize(node["Tracking"], network_, calibration_,
                                viz_server_)) {
       SPDLOG_CRITICAL("Failed to initialize Tracking");
       return false;
@@ -144,7 +145,7 @@ bool System::initialize(const std::string &config_path) {
     return false;
   } else {
     local_mapping_.reset(new LocalMapping());
-    if (!local_mapping_->initialize(node["LocalMapping"], droid_net_,
+    if (!local_mapping_->initialize(node["LocalMapping"], network_,
                                     calibration_, viz_server_)) {
       SPDLOG_CRITICAL("Failed to initialize LocalMapping");
       return false;
@@ -155,14 +156,9 @@ bool System::initialize(const std::string &config_path) {
 }
 
 bool System::initializeNetwork(const cv::FileNode &node) {
-  if (node["droidnet"].empty()) {
-    SPDLOG_CRITICAL("droidnet is not provided");
-    return false;
-  }
-
-  droid_net_.reset(new DroidNet());
-  if (!droid_net_->initialize(node["droidnet"])) {
-    SPDLOG_CRITICAL("Failed to initialize DroidNet");
+  network_.reset(new Network());
+  if (!network_->initialize(node)) {
+    SPDLOG_CRITICAL("Failed to initialize Network");
     return false;
   }
 

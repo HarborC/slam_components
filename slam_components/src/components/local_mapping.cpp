@@ -1,6 +1,6 @@
 #include "components/local_mapping.h"
-#include "components/network/droid_net/corr.h"
-#include "components/network/droid_net/utils.h"
+#include "components/network/droid/corr.h"
+#include "components/network/utils.h"
 
 #include <ATen/autocast_mode.h>
 #include <torch/torch.h>
@@ -10,10 +10,10 @@
 namespace slam_components {
 
 bool LocalMapping::initialize(const cv::FileNode &node,
-                              const DroidNet::Ptr &droid_net,
+                              const Network::Ptr &network,
                               const Calibration::Ptr &calibration,
                               const foxglove_viz::Visualizer::Ptr &viz_server) {
-  droid_net_ = droid_net;
+  network_ = network;
   calibration_ = calibration;
   viz_server_ = viz_server;
 
