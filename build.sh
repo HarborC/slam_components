@@ -7,14 +7,11 @@ cd ${BASE_DIR}/
 
 mkdir build
 cd build
-cmake -DCMAKE_PREFIX_PATH=/mnt/g/projects/slam/tmp/libtorch .. 
+cmake -DCMAKE_PREFIX_PATH=${BASE_DIR}/../../tmp/libtorch .. 
 make -j 
 make install
-
-# rm -r ../../../tmp/test/*
-./slam_components/apps/eruco_val
-
 # cd ..
 # rm -rf build
 
-# export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/mnt/i/project/slam/tmp/libtorch/lib
+# rm -r ../../../tmp/test/*
+./slam_components/apps/eruco_val
