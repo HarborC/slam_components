@@ -1,5 +1,6 @@
 #include "components/frame.h"
 #include "components/detector.h"
+#include "utils/log_utils.h"
 
 namespace slam_components {
 

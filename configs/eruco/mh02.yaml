@@ -30,6 +30,9 @@ Tracking:
   motion_filter_thresh: 2.5
   motion_model: "constant_velocity" # fixed, constant_velocity, imu, constant_acceleration(not supported)
 
+LocalMapping:
+  multi_thread: false
+
 Initialization:
   thresh: 0.5
 

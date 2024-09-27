@@ -18,14 +18,14 @@ bool Tracking::initialize(const cv::FileNode &node,
   viz_server_ = viz_server;
 
   if (node["motion_filter_thresh"].empty()) {
-    std::cerr << "Error: motion_filter_thresh is not provided\n";
+    SPDLOG_CRITICAL("motion_filter_thresh is not provided");
     return false;
   } else {
     node["motion_filter_thresh"] >> motion_filter_thresh_;
   }
 
   if (node["motion_model"].empty()) {
-    std::cerr << "Error: motion_model is not provided\n";
+    SPDLOG_CRITICAL("motion_model is not provided");
     return false;
   } else {
     node["motion_model"] >> motion_model_;
@@ -39,42 +39,51 @@ bool Tracking::initialize(const cv::FileNode &node,
              .view({3, 1, 1})
              .to(droid_net_->device_);
 
+  printSetting();
+
   return true;
 }
 
-bool Tracking::track(const TrackingInput &input) {
+void Tracking::printSetting() {
+  SPDLOG_INFO(
+      "\nTracking Setting: \n - motion_filter_thresh: {} \n - motion_model: {}",
+      motion_filter_thresh_, motion_model_);
+}
+
+Frame::Ptr Tracking::process(const TrackingInput &input) {
 
   curr_frame_.reset(
       new Frame(next_frame_id_++, input.camera_data->images_.size()));
   curr_frame_->setTimestamp(input.camera_data->timestamp_);
   curr_frame_->addData(input.camera_data->images_);
 
-  SPDLOG_INFO("Tracking frame: {}", curr_frame_->id());
+  // SPDLOG_INFO("Tracking frame: {}", curr_frame_->id());
 
   estimateInitialPose();
 
-  SPDLOG_INFO("estimate initial pose");
-
-  estimateInitialIdepth();
-
-  SPDLOG_INFO("estimate initial idepth");
+  // SPDLOG_INFO("estimate initial pose");
 
   if (judgeKeyframe()) {
+    curr_frame_->setKeyFrame(true);
+
     SPDLOG_INFO("keyframe");
     extractDenseFeature(curr_frame_);
-    SPDLOG_INFO("extract dense feature");
+    // SPDLOG_INFO("extract dense feature");
     extractSparseFeature(curr_frame_);
-    SPDLOG_INFO("extract sparse feature");
-    curr_frame_->setKeyFrame(true);
-    last_keyframe_ = curr_frame_;
+    // SPDLOG_INFO("extract sparse feature");
+
     publishRawImage();
+
+    last_keyframe_ = curr_frame_;
+    last_frame_ = curr_frame_;
+    return curr_frame_;
   } else {
     SPDLOG_INFO("not keyframe");
   }
 
   last_frame_ = curr_frame_;
 
-  return true;
+  return nullptr;
 }
 
 void Tracking::estimateInitialPose() {
@@ -95,7 +104,8 @@ void Tracking::estimateInitialPose() {
 
     estimatePoseByIMU();
   } else {
-    std::cerr << "Unknown motion model: {" << motion_model_ << "}\n";
+    estimatePoseByConstantVelocity();
+    SPDLOG_WARN("Unknown motion model: {}", motion_model_);
   }
 }
 
@@ -103,16 +113,14 @@ void Tracking::estimatePoseByConstantVelocity() {}
 
 void Tracking::estimatePoseByIMU() {}
 
-void Tracking::estimateInitialIdepth() {}
-
 bool Tracking::judgeKeyframe() {
   if (last_keyframe_ == nullptr) {
     return true;
   }
 
-  SPDLOG_INFO("judge keyframe");
+  // SPDLOG_INFO("judge keyframe");
   extractDenseFeature(curr_frame_, true);
-  SPDLOG_INFO("extract dense feature");
+  // SPDLOG_INFO("extract dense feature");
   if (motionFilter()) {
     return true;
   }
@@ -163,7 +171,6 @@ void Tracking::extractDenseFeature(const Frame::Ptr &frame,
 
   // 提取 feature map
   if (!frame->feature_map_.defined()) {
-    SPDLOG_INFO("images_droid_torch_ shape: {}", frame->images_droid_torch_.sizes());
     std::vector<torch::jit::IValue> input_tensors;
     input_tensors.push_back(frame->images_droid_torch_);
     frame->feature_map_ = this->droid_net_->droid_fnet_.forward(input_tensors)
@@ -186,11 +193,11 @@ void Tracking::extractDenseFeature(const Frame::Ptr &frame,
   }
 
   at::autocast::clear_cache();
-  at::autocast::set_autocast_cache_enabled(false);;
+  at::autocast::set_autocast_cache_enabled(false);
 }
 
 bool Tracking::motionFilter() {
-  SPDLOG_INFO("motion filter");
+  // SPDLOG_INFO("motion filter");
 
   // 禁用梯度计算
   torch::NoGradGuard no_grad;
@@ -208,15 +215,15 @@ bool Tracking::motionFilter() {
   torch::Tensor coords0 =
       getCoordsGrid(ht, wd, droid_net_->device_).unsqueeze(0).unsqueeze(0);
 
-  SPDLOG_INFO("getCoordsGrid");
+  // SPDLOG_INFO("getCoordsGrid");
 
-  SPDLOG_INFO("coords0 shape: {}", coords0.sizes());
+  // SPDLOG_INFO("coords0 shape: {}", coords0.sizes());
 
-  SPDLOG_INFO("last_keyframe_->feature_map_ shape: {}",
-              last_keyframe_->feature_map_.sizes());
+  // SPDLOG_INFO("last_keyframe_->feature_map_ shape: {}",
+  //             last_keyframe_->feature_map_.sizes());
 
-  SPDLOG_INFO("curr_frame_->feature_map_ shape: {}",
-              curr_frame_->feature_map_.sizes());
+  // SPDLOG_INFO("curr_frame_->feature_map_ shape: {}",
+  //             curr_frame_->feature_map_.sizes());
 
   // 计算相关性
   torch::Tensor corr = CorrBlock(
@@ -225,15 +232,15 @@ bool Tracking::motionFilter() {
       curr_frame_->feature_map_.index({torch::indexing::Slice(0, 1)})
           .unsqueeze(0))(coords0);
 
-  SPDLOG_INFO("CorrBlock");
+  // SPDLOG_INFO("CorrBlock");
 
-  SPDLOG_INFO("corr shape: {}", corr.sizes());
+  // SPDLOG_INFO("corr shape: {}", corr.sizes());
 
-  SPDLOG_INFO("last_keyframe_->net_map_ shape: {}",
-              last_keyframe_->net_map_.sizes());
+  // SPDLOG_INFO("last_keyframe_->net_map_ shape: {}",
+  //             last_keyframe_->net_map_.sizes());
 
-  SPDLOG_INFO("last_keyframe_->context_map_ shape: {}",
-              last_keyframe_->context_map_.sizes());
+  // SPDLOG_INFO("last_keyframe_->context_map_ shape: {}",
+  //             last_keyframe_->context_map_.sizes());
 
   // 使用 droid_update 计算
   std::vector<torch::jit::IValue> input_tensors;
@@ -245,20 +252,21 @@ bool Tracking::motionFilter() {
           .unsqueeze(0));
   input_tensors.push_back(corr);
 
-  SPDLOG_INFO("push data");
+  // SPDLOG_INFO("push data");
 
   auto output = this->droid_net_->droid_update_.forward(input_tensors);
 
-  SPDLOG_INFO("update");
+  // SPDLOG_INFO("update");
 
   auto outputs = output.toTuple();
 
   at::autocast::clear_cache();
-  at::autocast::set_autocast_cache_enabled(false);;
+  at::autocast::set_autocast_cache_enabled(false);
+  ;
 
   torch::Tensor delta = outputs->elements()[1].toTensor();
 
-  SPDLOG_INFO("output");
+  // SPDLOG_INFO("output");
 
   if (delta.norm(2, -1).mean().item<float>() > motion_filter_thresh_) {
     return true;
@@ -274,8 +282,8 @@ void Tracking::extractSparseFeature(const Frame::Ptr &frame) {
 void Tracking::publishRawImage() {
   if (viz_server_) {
     cv::Mat raw_img = curr_frame_->drawRawImage();
-    viz_server_->showImage("raw_img", int64_t(curr_frame_->timestamp() * 1e6),
-                           raw_img);
+    viz_server_->showImage("keyframe/raw_images",
+                           int64_t(curr_frame_->timestamp() * 1e6), raw_img);
   }
 }
 

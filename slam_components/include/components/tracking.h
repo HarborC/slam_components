@@ -31,13 +31,14 @@ public:
                   const Calibration::Ptr &calibration,
                   const foxglove_viz::Visualizer::Ptr &viz_server);
 
-  bool track(const TrackingInput &input);
+  Frame::Ptr process(const TrackingInput &input);
+
+  void printSetting();
 
 private:
   void estimateInitialPose();
   void estimatePoseByConstantVelocity();
   void estimatePoseByIMU();
-  void estimateInitialIdepth();
 
   bool judgeKeyframe();
 

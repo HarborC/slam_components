@@ -5,6 +5,7 @@
 #include <thread>
 
 #include "calibration/calibration.h"
+#include "components/local_mapping.h"
 #include "components/network/droid_net/droid_net.h"
 #include "components/sensor_data.h"
 #include "components/tracking.h"
@@ -47,6 +48,7 @@ private:
   DroidNet::Ptr droid_net_;
   Calibration::Ptr calibration_;
   Tracking::Ptr tracking_;
+  LocalMapping::Ptr local_mapping_;
   foxglove_viz::Visualizer::Ptr viz_server_;
 
   std::deque<IMUData::Ptr> imu_buf_;

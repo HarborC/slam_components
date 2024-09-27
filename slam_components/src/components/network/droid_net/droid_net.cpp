@@ -6,6 +6,7 @@
 #include <torch/torch.h>
 
 #include "components/network/droid_net/utils.h"
+#include "utils/log_utils.h"
 
 namespace slam_components {
 
@@ -14,14 +15,14 @@ bool DroidNet::initialize(const cv::FileNode &node) {
 
   device_ = torch::Device(torch::kCUDA);
   if (!torch::cuda::is_available()) {
-    std::cout << "CUDA is not available, using CPU instead.\n";
+    SPDLOG_WARN("CUDA is not available, using CPU instead.");
     device_ = torch::Device(torch::kCPU);
   }
 
   std::string fnet_path, cnet_path, update_path;
 
   if (node["fnet_path"].empty()) {
-    std::cerr << "Error: fnet_path is not provided\n";
+    SPDLOG_CRITICAL("Error: fnet_path is not provided");
     return false;
   }
 
@@ -30,7 +31,7 @@ bool DroidNet::initialize(const cv::FileNode &node) {
   try {
     droid_fnet_ = torch::jit::load(std::string(PROJECT_DIR) + fnet_path);
   } catch (const c10::Error &e) {
-    std::cerr << "Error loading fnet_path\n";
+    SPDLOG_CRITICAL("Error loading fnet_path");
     return false;
   }
 
@@ -38,7 +39,7 @@ bool DroidNet::initialize(const cv::FileNode &node) {
   droid_fnet_.eval();
 
   if (node["cnet_path"].empty()) {
-    std::cerr << "Error: cnet_path is not provided\n";
+    SPDLOG_CRITICAL("Error: cnet_path is not provided");
     return false;
   }
 
@@ -47,7 +48,7 @@ bool DroidNet::initialize(const cv::FileNode &node) {
   try {
     droid_cnet_ = torch::jit::load(std::string(PROJECT_DIR) + cnet_path);
   } catch (const c10::Error &e) {
-    std::cerr << "Error loading cnet_path\n";
+    SPDLOG_CRITICAL("Error loading cnet_path");
     return false;
   }
 
@@ -55,7 +56,7 @@ bool DroidNet::initialize(const cv::FileNode &node) {
   droid_cnet_.eval();
 
   if (node["update_path"].empty()) {
-    std::cerr << "Error: update_path is not provided\n";
+    SPDLOG_CRITICAL("Error: update_path is not provided");
     return false;
   }
 
@@ -64,7 +65,7 @@ bool DroidNet::initialize(const cv::FileNode &node) {
   try {
     droid_update_ = torch::jit::load(std::string(PROJECT_DIR) + update_path);
   } catch (const c10::Error &e) {
-    std::cerr << "Error loading update_path\n";
+    SPDLOG_CRITICAL("Error loading update_path");
     return false;
   }
 
@@ -74,13 +75,13 @@ bool DroidNet::initialize(const cv::FileNode &node) {
   initialized_ = true;
   warmup();
 
-  std::cout << "DroidNet initialized\n";
+  SPDLOG_INFO("DroidNet initialized");
 
   return true;
 }
 
 void DroidNet::warmup() {
-  // TODO: Implement warmup
+  // Implement warmup
   // Warm up the network
   printLibtorchVersion();
   printCudaCuDNNInfo();
@@ -96,8 +97,8 @@ void DroidNet::warmup() {
     input_tensors.push_back(x0);
     droid_fnet_.forward(input_tensors);
     droid_cnet_.forward(input_tensors);
-  } 
-  
+  }
+
   {
     torch::Tensor x1 = torch::randn({1, 2, 128, 60, 94}).to(device_);
     torch::Tensor x2 = torch::randn({1, 2, 128, 60, 94}).to(device_);

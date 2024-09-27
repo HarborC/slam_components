@@ -1,31 +1,6 @@
 #include "components/system.h"
 #include "utils/log_utils.h"
 
-namespace cv {
-// Define a new bool reader in order to accept "true/false"-like values.
-void read_bool(const cv::FileNode &node, bool &value,
-               const bool &default_value) {
-  std::string s(static_cast<std::string>(node));
-  if (s == "y" || s == "Y" || s == "yes" || s == "Yes" || s == "YES" ||
-      s == "true" || s == "True" || s == "TRUE" || s == "on" || s == "On" ||
-      s == "ON") {
-    value = true;
-    return;
-  }
-  if (s == "n" || s == "N" || s == "no" || s == "No" || s == "NO" ||
-      s == "false" || s == "False" || s == "FALSE" || s == "off" ||
-      s == "Off" || s == "OFF") {
-    value = false;
-    return;
-  }
-  value = static_cast<int>(node);
-}
-// Specialize cv::operator>> for bool.
-template <> inline void operator>>(const cv::FileNode &n, bool &value) {
-  read_bool(n, value, false);
-}
-} // namespace cv
-
 namespace slam_components {
 
 System::~System() { requestFinish(); }
@@ -111,7 +86,11 @@ void System::processLoop() {
   while (1) {
     TrackingInput input;
     if (getTrackingInput(input)) {
-      tracking_->track(input);
+      auto keyframe = tracking_->process(input);
+      if (keyframe) {
+        local_mapping_->push_back(keyframe);
+        local_mapping_->process();
+      }
     } else if (!is_running_) {
       break;
     } else {
@@ -123,39 +102,51 @@ void System::processLoop() {
 bool System::initialize(const std::string &config_path) {
   cv::FileStorage node(config_path, cv::FileStorage::READ);
   if (!node.isOpened()) {
-    std::cerr << "Error: Failed to open config file\n";
+    std::cerr << "Failed to open config file" << std::endl;
     return false;
   }
 
   if (node["Log"].empty() || !initializeLog(node["Log"])) {
-    std::cerr << "Error: Failed to initialize Log\n";
+    std::cerr << "Failed to initialize Log" << std::endl;
     return false;
   }
 
   if (node["Visualizer"].empty() || !initializeViz(node["Visualizer"])) {
-    std::cerr << "Error: Failed to initialize Visualizer\n";
+    SPDLOG_CRITICAL("Failed to initialize Visualizer");
     return false;
   }
 
   if (node["Calibration"].empty() ||
       !initializeCalibration(node["Calibration"])) {
-    std::cerr << "Error: Failed to initialize calibration\n";
+    SPDLOG_CRITICAL("Failed to initialize calibration");
     return false;
   }
 
   if (node["Network"].empty() || !initializeNetwork(node["Network"])) {
-    std::cerr << "Error: Failed to initialize Network\n";
+    SPDLOG_CRITICAL("Failed to initialize Network");
     return false;
   }
 
   if (node["Tracking"].empty()) {
-    std::cerr << "Error: Tracking is not provided\n";
+    SPDLOG_CRITICAL("Tracking is not provided");
     return false;
   } else {
     tracking_.reset(new Tracking());
     if (!tracking_->initialize(node["Tracking"], droid_net_, calibration_,
                                viz_server_)) {
-      std::cerr << "Error: Failed to initialize Tracking\n";
+      SPDLOG_CRITICAL("Failed to initialize Tracking");
+      return false;
+    }
+  }
+
+  if (node["LocalMapping"].empty()) {
+    SPDLOG_CRITICAL("LocalMapping is not provided");
+    return false;
+  } else {
+    local_mapping_.reset(new LocalMapping());
+    if (!local_mapping_->initialize(node["LocalMapping"], droid_net_,
+                                    calibration_, viz_server_)) {
+      SPDLOG_CRITICAL("Failed to initialize LocalMapping");
       return false;
     }
   }
@@ -165,13 +156,13 @@ bool System::initialize(const std::string &config_path) {
 
 bool System::initializeNetwork(const cv::FileNode &node) {
   if (node["droidnet"].empty()) {
-    std::cerr << "Error: droidnet is not provided\n";
+    SPDLOG_CRITICAL("droidnet is not provided");
     return false;
   }
 
   droid_net_.reset(new DroidNet());
   if (!droid_net_->initialize(node["droidnet"])) {
-    std::cerr << "Error: Failed to initialize DroidNet\n";
+    SPDLOG_CRITICAL("Failed to initialize DroidNet");
     return false;
   }
 
@@ -180,7 +171,7 @@ bool System::initializeNetwork(const cv::FileNode &node) {
 
 bool System::initializeCalibration(const cv::FileNode &node) {
   if (node["path"].empty()) {
-    std::cerr << "Error: calibration.path is not provided\n";
+    SPDLOG_CRITICAL("calibration.path is not provided");
     return false;
   }
 
@@ -195,7 +186,7 @@ bool System::initializeCalibration(const cv::FileNode &node) {
 
 bool System::initializeViz(const cv::FileNode &node) {
   if (node["port"].empty()) {
-    std::cerr << "Error: calibration.port is not provided\n";
+    SPDLOG_CRITICAL("calibration.port is not provided");
     return false;
   }
 
@@ -209,7 +200,7 @@ bool System::initializeViz(const cv::FileNode &node) {
 
 bool System::initializeLog(const cv::FileNode &node) {
   if (node["path"].empty()) {
-    std::cerr << "Error: Log.path is not provided\n";
+    std::cerr << "Log.path is not provided" << std::endl;
     return false;
   }
 

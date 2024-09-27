@@ -34,13 +34,13 @@ CorrBlock::CorrBlock(torch::Tensor fmap1, torch::Tensor fmap2, int num_levels,
     : num_levels(num_levels), radius(radius) {
   corr_pyramid = std::vector<torch::Tensor>();
 
-  SPDLOG_INFO("fmap1 size {}", fmap1.sizes());
-  SPDLOG_INFO("fmap2 size {}", fmap2.sizes());
+  // SPDLOG_INFO("fmap1 size {}", fmap1.sizes());
+  // SPDLOG_INFO("fmap2 size {}", fmap2.sizes());
 
   // all pairs correlation
   torch::Tensor corr = CorrBlock::corr(fmap1, fmap2);
 
-  SPDLOG_INFO("corr size {}", corr.sizes());
+  // SPDLOG_INFO("corr size {}", corr.sizes());
 
   auto sizes = corr.sizes();
   int64_t batch = sizes[0];
@@ -52,7 +52,7 @@ CorrBlock::CorrBlock(torch::Tensor fmap1, torch::Tensor fmap2, int num_levels,
 
   corr = corr.reshape({batch * num * h1 * w1, 1, h2, w2});
 
-  SPDLOG_INFO("corr size {}", corr.sizes());
+  // SPDLOG_INFO("corr size {}", corr.sizes());
 
   for (int i = 0; i < num_levels; ++i) {
     corr_pyramid.push_back(
