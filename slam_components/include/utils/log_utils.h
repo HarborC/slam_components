@@ -33,7 +33,7 @@ public:
   using Ptr = std::shared_ptr<TimeStatistics>;
 
 public:
-  TimeStatistics();
+  TimeStatistics(std::string node_name = "Empty");
 
   void tic();
 
@@ -49,6 +49,8 @@ public:
 
   TimeTicToc timer;
   TimeTicToc timer_all;
+
+  std::string node_description;
 };
 
 std::string getNowDateTime();

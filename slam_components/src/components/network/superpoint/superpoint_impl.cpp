@@ -150,6 +150,7 @@ torch::Tensor sampleDescriptors(torch::Tensor keypoints,
 std::tuple<torch::Tensor, torch::Tensor>
 SuperPointImpl::forward(torch::Tensor x, int nms_radius, int max_num_keypoints,
                         float detection_threshold, int remove_borders) {
+  // SPDLOG_INFO("x shape: {}", x.sizes());
   x = rgb2Grayscale(x);
 
   // SPDLOG_INFO("SuperPoint forward");

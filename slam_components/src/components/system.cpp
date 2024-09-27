@@ -4,7 +4,13 @@
 
 namespace slam_components {
 
-System::~System() { requestFinish(); }
+System::~System() {
+  is_running_ = false;
+  if (loop_thread) {
+    loop_thread->join();
+    loop_thread = nullptr;
+  }
+}
 
 void System::feedIMU(const double &timestamp,
                      const Eigen::Vector3d &angular_velocity,
@@ -28,13 +34,19 @@ void System::feedCamera(const double &timestamp,
 void System::begin() {
   is_running_ = true;
   loop_thread.reset(new std::thread(&System::processLoop, this));
+
+  std::cout << "System start!" << std::endl;
 }
 
 void System::requestFinish() {
+  std::cout << "System try to end!" << std::endl;
   is_running_ = false;
   if (loop_thread) {
     loop_thread->join();
+    loop_thread = nullptr;
   }
+
+  std::cout << "System end!" << std::endl;
 }
 
 bool System::getTrackingInput(TrackingInput &input) {

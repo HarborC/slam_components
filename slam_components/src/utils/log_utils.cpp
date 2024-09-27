@@ -11,32 +11,33 @@ double TimeTicToc::toc() {
   return elapsed_seconds.count() * 1000;
 }
 
-TimeStatistics::TimeStatistics() {
-  timer.tic();
-  timer_all.tic();
-
+TimeStatistics::TimeStatistics(std::string node_name)
+    : node_description(node_name) {
   time_cost.reserve(10);
   time_descri.reserve(10);
+
+  timer.tic();
+  timer_all.tic();
 }
 
 void TimeStatistics::tic() { timer.tic(); }
 
 void TimeStatistics::reStart() {
-  timer.tic();
-  timer_all.tic();
-
   time_cost.clear();
   time_descri.clear();
+
+  timer.tic();
+  timer_all.tic();
 }
 
 void TimeStatistics::tocAndTic(std::string descri) {
-  SPDLOG_INFO("{}", descri);
-
   double t = timer.toc();
-  timer.tic();
+
+  SPDLOG_INFO("{}({})", descri, node_description);
 
   time_cost.push_back(t);
   time_descri.push_back(descri);
+  timer.tic();
 }
 
 double TimeStatistics::logTimeStatistics(double time_now) {
@@ -45,13 +46,17 @@ double TimeStatistics::logTimeStatistics(double time_now) {
   time_cost.push_back(t_all);
   time_descri.push_back("all");
 
-  std::string log_msg = fmt::format("TimeSummary:{:.6f};", time_now);
+  std::string log_msg =
+      fmt::format("\n{} TimeSummary:{:.6f} \n", node_description, time_now);
 
   for (size_t i = 0; i < time_cost.size(); i++) {
-    log_msg += fmt::format("{}:{:.6f} ms;", time_descri.at(i), time_cost.at(i));
+    log_msg +=
+        fmt::format(" - {}:{:.6f} ms\n", time_descri.at(i), time_cost.at(i));
   }
 
   SPDLOG_INFO("{}", log_msg);
+
+  reStart();
 
   return t_all;
 }

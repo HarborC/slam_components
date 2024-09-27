@@ -5,6 +5,7 @@
 #include <ATen/autocast_mode.h>
 #include <torch/torch.h>
 
+#include "components/utils/type_utils.h"
 #include "utils/log_utils.h"
 
 namespace slam_components {
@@ -50,37 +51,62 @@ void Tracking::printSetting() {
 }
 
 Frame::Ptr Tracking::process(const TrackingInput &input) {
+  static double process_total_time = 0.0;
+  static int process_total_count = 0;
+
+  TimeStatistics tracking_statistics("Tracking");
+
+  tracking_statistics.tic();
 
   curr_frame_.reset(
       new Frame(next_frame_id_++, input.camera_data->images_.size()));
   curr_frame_->setTimestamp(input.camera_data->timestamp_);
   curr_frame_->addData(input.camera_data->images_);
 
-  // SPDLOG_INFO("Tracking frame: {}", curr_frame_->id());
+  tracking_statistics.tocAndTic("initialize frame");
 
   estimateInitialPose();
 
-  // SPDLOG_INFO("estimate initial pose");
+  tracking_statistics.tocAndTic("estimate initial pose");
+
+  this->propressImage(curr_frame_);
+
+  tracking_statistics.tocAndTic("propress image");
 
   if (judgeKeyframe()) {
+    tracking_statistics.tocAndTic("judge keyframe");
     curr_frame_->setKeyFrame(true);
 
-    SPDLOG_INFO("keyframe");
     extractDenseFeature(curr_frame_);
-    // SPDLOG_INFO("extract dense feature");
+
+    tracking_statistics.tocAndTic("extract dense feature");
+
     extractSparseFeature(curr_frame_);
-    // SPDLOG_INFO("extract sparse feature");
+
+    tracking_statistics.tocAndTic("extract sparse feature");
 
     publishRawImage();
 
+    tracking_statistics.tocAndTic("publish raw image");
+
     last_keyframe_ = curr_frame_;
     last_frame_ = curr_frame_;
+
+    tracking_statistics.logTimeStatistics(curr_frame_->id());
+
     return curr_frame_;
   } else {
-    SPDLOG_INFO("not keyframe");
+    tracking_statistics.tocAndTic("judge nonkeyframe");
   }
 
   last_frame_ = curr_frame_;
+
+  process_total_time +=
+      tracking_statistics.logTimeStatistics(curr_frame_->id());
+  process_total_count += 1;
+
+  SPDLOG_INFO("Tracking process average time: {} ms",
+              process_total_time / process_total_count);
 
   return nullptr;
 }
@@ -152,7 +178,7 @@ void Tracking::propressImage(const Frame::Ptr &frame) {
           .to(network_->droid_net_->device_) /
       255.0;
 
-  frame->images_lightglue_torch_ = images_tensor;
+  frame->images_superpoint_torch_ = images_tensor;
   frame->images_droid_torch_ = images_tensor.sub(MEAN).div(STDV).unsqueeze(0);
 }
 
@@ -166,7 +192,8 @@ void Tracking::extractDenseFeature(const Frame::Ptr &frame,
 
   // 检查图像是否已预处理
   if (!frame->images_droid_torch_.defined()) {
-    this->propressImage(frame);
+    SPDLOG_ERROR("images_droid_torch_ is not defined");
+    return;
   }
 
   // 提取 feature map
@@ -268,7 +295,6 @@ bool Tracking::motionFilter() {
 
   at::autocast::clear_cache();
   at::autocast::set_autocast_cache_enabled(false);
-  ;
 
   torch::Tensor delta = outputs->elements()[1].toTensor();
 
@@ -282,7 +308,24 @@ bool Tracking::motionFilter() {
 }
 
 void Tracking::extractSparseFeature(const Frame::Ptr &frame) {
-  frame->extractFeature();
+  if (0)
+    frame->extractFeature();
+  else {
+    std::vector<std::vector<Eigen::Vector2d>> keypoints_vec;
+    std::vector<cv::Mat> descriptors_vec;
+    for (size_t i = 0; i < frame->imgs().size(); ++i) {
+      auto sparse_result = network_->superpoint_net_->net_->forward(
+          frame->images_superpoint_torch_[i].unsqueeze(0));
+
+      torch::Tensor keypoint = std::get<0>(sparse_result);
+      torch::Tensor descriptor = std::get<1>(sparse_result);
+
+      std::vector<Eigen::Vector2d> keypoints;
+      cv::Mat descriptors;
+      // TODO: convert tensor to cv::Mat
+    }
+    frame->images_superpoint_torch_.reset();
+  }
 }
 
 void Tracking::publishRawImage() {

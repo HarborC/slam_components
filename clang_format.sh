@@ -16,3 +16,4 @@ clang-format -i ./slam_components/src/components/network/*.cpp
 clang-format -i ./slam_components/apps/*.cpp
 clang-format -i ./slam_components/src/utils/*.cpp
 clang-format -i ./slam_components/include/utils/*.h
+clang-format -i ./slam_components/include/components/utils/*.h
