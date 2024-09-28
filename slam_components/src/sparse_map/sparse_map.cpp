@@ -412,7 +412,7 @@ bool SparseMap::bundleAdjustment(bool use_prior, int opt_num) {
     for (auto it = frame_map_.begin(); it != frame_map_.end(); ++it) {
       Frame::Ptr frame = it->second;
       ceres::CostFunction *cost_function =
-          PoseError::Create(frame->Twb_prior_, 10, 1);
+          PoseError::Create(frame->Twb_prior_, 0, 1);
       problem.AddResidualBlock(cost_function, NULL,
                                frame->getTranslationParams(),
                                frame->getRotaionParams());

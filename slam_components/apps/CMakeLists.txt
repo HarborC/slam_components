@@ -1,6 +1,9 @@
+set(PROJ_LIBRARIES 
+    /usr/lib/x86_64-linux-gnu/libproj.so)
+
 # create camera_model
 add_executable(seq_data_test seq_data_test.cpp)
-target_link_libraries(seq_data_test sparse_map)
+target_link_libraries(seq_data_test sparse_map ${PROJ_LIBRARIES})
 
 # add_executable(change_dem change_dem.cpp)
 # target_link_libraries(change_dem PUBLIC ${PROJECT_NAME})

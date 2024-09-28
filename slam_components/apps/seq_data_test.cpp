@@ -12,6 +12,7 @@
 
 #include "foxglove/visualizer.h"
 #include "general_camera_model/function.hpp"
+#include <proj.h>
 
 using namespace Eigen;
 
@@ -23,6 +24,28 @@ using namespace foxglove_viz;
 
 #include <Eigen/Dense>
 #include <iostream>
+
+PJ_CONTEXT *context = proj_context_create();
+
+// 定义源坐标系 (WGS 84 经纬度, EPSG:4326)
+PJ *wgs84 = proj_create(context, "EPSG:4326");
+
+// 定义目标坐标系 (Pseudo-Mercator, EPSG:3857)
+PJ *mercator = proj_create(context, "EPSG:3857");
+
+// 创建从 WGS 84 到 EPSG:3857 的转换对象
+PJ *transformation =
+    proj_create_crs_to_crs_from_pj(context, wgs84, mercator, NULL, NULL);
+
+Eigen::Vector3d llhPJ(double latitude, double longitude, double altitude) {
+  // 定义经纬度作为输入 (注意：WGS 84 坐标顺序是 经度, 纬度)
+  PJ_COORD input_coord = proj_coord(longitude, latitude, altitude, 0);
+
+  // 执行转换：从 WGS 84 经纬度转换为 EPSG:3857
+  PJ_COORD output_coord = proj_trans(transformation, PJ_FWD, input_coord);
+
+  return Eigen::Vector3d(output_coord.xy.x, output_coord.xy.y, altitude);
+}
 
 Eigen::Vector3d llhToECEF(double lat, double lon, double alt) {
   // WGS84楠球参数
@@ -398,7 +421,8 @@ Eigen::Matrix4d getENUPose(const std::vector<double> &ins) {
 
   Eigen::Matrix3d R_nue2body = nueToBody(yaw, pitch, roll);
   Eigen::Matrix3d R_body2camera = bodyToCamera(qy, qz);
-  Eigen::Vector3d t_enu = llhToENU(lat, lon, alt, lat0, lon0, alt0);
+  // Eigen::Vector3d t_enu = llhToENU(lat, lon, alt, lat0, lon0, alt0);
+  Eigen::Vector3d t_enu = llhPJ(lat, lon, alt);
   Eigen::Matrix3d R_nue = R_nue2body * R_body2camera;
 
   Eigen::Matrix3d R_enu_nue;
@@ -658,7 +682,10 @@ int main(int argc, char **argv) {
       sparse_map->getFrame(kf_id_and_name.begin()->first)->getBodyPose();
   T_wc0.block(0, 0, 3, 3) = Omega2R(euler0);
 
+  T_wc0 = Eigen::Matrix4d::Identity();
+
   Eigen::Matrix4d T_wc0_inv = T_wc0.inverse();
+  
 
   std::vector<Eigen::Vector3d> points;
   for (auto it = sparse_map->frame_map_.begin();
@@ -698,7 +725,7 @@ int main(int argc, char **argv) {
                                             new_normal.z(), new_d};
 
   auto dem = generateDEMByPlane(new_points, plane_coefficients, 5);
-  dem.saveAsArcGrid("../../../datasets/TXPJ/test2/extract/dem.grd");
+  dem.save2("../../../datasets/TXPJ/test2/extract/dem.bin");
 
   index = 0;
   for (auto it = kf_id_and_name.begin(); it != kf_id_and_name.end(); it++) {
@@ -789,6 +816,11 @@ int main(int argc, char **argv) {
 
     std::this_thread::sleep_for(std::chrono::milliseconds(1000));
   }
+
+  proj_destroy(wgs84);
+  proj_destroy(mercator);
+  proj_destroy(transformation);
+  proj_context_destroy(context);
 
   return 0;
 }
