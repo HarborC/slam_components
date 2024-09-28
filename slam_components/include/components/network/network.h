@@ -6,7 +6,7 @@
 
 #include <opencv2/opencv.hpp>
 
-#include "components/network/droid_net/droid_net.h"
+#include "components/network/droid/droid_net.h"
 #include "components/network/superpoint/superpoint_net.h"
 
 namespace slam_components {

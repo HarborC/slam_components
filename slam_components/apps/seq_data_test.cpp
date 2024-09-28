@@ -26,25 +26,36 @@ using namespace foxglove_viz;
 #include <iostream>
 
 PJ_CONTEXT *context = proj_context_create();
-
-// 定义源坐标系 (WGS 84 经纬度, EPSG:4326)
-PJ *wgs84 = proj_create(context, "EPSG:4326");
-
-// 定义目标坐标系 (Pseudo-Mercator, EPSG:3857)
-PJ *mercator = proj_create(context, "EPSG:3857");
-
-// 创建从 WGS 84 到 EPSG:3857 的转换对象
 PJ *transformation =
-    proj_create_crs_to_crs_from_pj(context, wgs84, mercator, NULL, NULL);
+    proj_create_crs_to_crs(context, "EPSG:4326", "EPSG:3857", NULL);
 
 Eigen::Vector3d llhPJ(double latitude, double longitude, double altitude) {
+
+  if (transformation == NULL) {
+    std::cerr << "Error: Failed to create transformation object!" << std::endl;
+    return Eigen::Vector3d(NAN, NAN, NAN); // 或其他错误处理
+  }
+
   // 定义经纬度作为输入 (注意：WGS 84 坐标顺序是 经度, 纬度)
-  PJ_COORD input_coord = proj_coord(longitude, latitude, altitude, 0);
+  std::cout << "latitude: " << latitude << ", longitude: " << longitude
+            << std::endl;
+  PJ_COORD input_coord = proj_coord(latitude, longitude, 0, 0);
 
   // 执行转换：从 WGS 84 经纬度转换为 EPSG:3857
   PJ_COORD output_coord = proj_trans(transformation, PJ_FWD, input_coord);
 
-  return Eigen::Vector3d(output_coord.xy.x, output_coord.xy.y, altitude);
+  int err = proj_errno(transformation);
+  if (err != 0) {
+    const char *error_message = proj_errno_string(err);
+    std::cerr << "Error: Projection transformation failed! Reason: "
+              << error_message << std::endl;
+    return Eigen::Vector3d(NAN, NAN, NAN);
+  }
+
+  Eigen::Vector3d xyz =
+      Eigen::Vector3d(output_coord.xy.x, output_coord.xy.y, altitude);
+
+  return xyz;
 }
 
 Eigen::Vector3d llhToECEF(double lat, double lon, double alt) {
@@ -422,8 +433,10 @@ Eigen::Matrix4d getENUPose(const std::vector<double> &ins) {
   Eigen::Matrix3d R_nue2body = nueToBody(yaw, pitch, roll);
   Eigen::Matrix3d R_body2camera = bodyToCamera(qy, qz);
   // Eigen::Vector3d t_enu = llhToENU(lat, lon, alt, lat0, lon0, alt0);
-  Eigen::Vector3d t_enu = llhPJ(lat, lon, alt);
+  Eigen::Vector3d t_enu = llhPJ(ins[6], ins[5], alt);
   Eigen::Matrix3d R_nue = R_nue2body * R_body2camera;
+
+  std::cout << " t_enu: " << t_enu.transpose() << std::endl;
 
   Eigen::Matrix3d R_enu_nue;
   R_enu_nue << 0, 0, 1, 1, 0, 0, 0, 1, 0;
@@ -685,7 +698,6 @@ int main(int argc, char **argv) {
   T_wc0 = Eigen::Matrix4d::Identity();
 
   Eigen::Matrix4d T_wc0_inv = T_wc0.inverse();
-  
 
   std::vector<Eigen::Vector3d> points;
   for (auto it = sparse_map->frame_map_.begin();
@@ -715,6 +727,8 @@ int main(int argc, char **argv) {
     Eigen::Vector3d pt = points[i];
     pt = T_wc0_inv.block(0, 0, 3, 3) * pt + T_wc0_inv.block(0, 3, 3, 1);
     new_points.push_back(pt);
+
+    std::cout << i << " pt: " << pt.transpose() << std::endl;
   }
 
   Eigen::Vector3d normal(0, 0, 1);
@@ -724,8 +738,12 @@ int main(int argc, char **argv) {
   std::vector<double> plane_coefficients = {new_normal.x(), new_normal.y(),
                                             new_normal.z(), new_d};
 
+  std::cout << "normal: " << new_normal.transpose() << std::endl;
+
   auto dem = generateDEMByPlane(new_points, plane_coefficients, 5);
   dem.save2("../../../datasets/TXPJ/test2/extract/dem.bin");
+
+  std::cout << "uuuuuuuuuuuuuuuuu" << std::endl;
 
   index = 0;
   for (auto it = kf_id_and_name.begin(); it != kf_id_and_name.end(); it++) {
@@ -817,8 +835,6 @@ int main(int argc, char **argv) {
     std::this_thread::sleep_for(std::chrono::milliseconds(1000));
   }
 
-  proj_destroy(wgs84);
-  proj_destroy(mercator);
   proj_destroy(transformation);
   proj_context_destroy(context);
 
