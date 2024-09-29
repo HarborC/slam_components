@@ -83,6 +83,9 @@ include_directories(${PCL_INCLUDE_DIR})
 
 find_package(spdlog REQUIRED)
 
+find_package(GTSAM REQUIRED)
+include_directories(${GTSAM_INCLUDE_DIR})
+
 set(CAFFE2_USE_CUDNN ON)
 set(USE_CUSPARSELT OFF)
 find_package(Torch REQUIRED)

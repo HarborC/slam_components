@@ -56,12 +56,34 @@ void LocalMapping::process(bool in_loop) {
     return;
   }
 
+  if (in_loop) {
+    SPDLOG_INFO("In Loop");
+  }
+
+  static double process_total_time = 0.0;
+  static int process_total_count = 0;
+
+  TimeStatistics local_mapping_statistics("LocalMapping");
+  local_mapping_statistics.tic();
+
   keyframe_buf_mtx_.lock();
   curr_keyframe_ = keyframe_buf_.front();
   keyframe_buf_.pop_front();
   keyframe_buf_mtx_.unlock();
 
+  local_mapping_statistics.tocAndTic("initialize frame");
+
   estimateInitialIdepth();
+  local_mapping_statistics.tocAndTic("estimate initial idepth");
+
+  local_mapping_statistics.tocAndTic("process keyframe");
+
+  process_total_time +=
+      local_mapping_statistics.logTimeStatistics(curr_keyframe_->id());
+  process_total_count += 1;
+
+  SPDLOG_INFO("LocalMapping process average time: {} ms",
+              process_total_time / process_total_count);
 }
 
 void LocalMapping::processLoop() {

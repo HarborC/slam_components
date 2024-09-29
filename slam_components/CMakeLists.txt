@@ -58,7 +58,8 @@ target_link_libraries(${PROJECT_NAME} PUBLIC
   ${TORCH_LIBRARIES} 
   foxglove_lib 
   general_dataset 
-  spdlog::spdlog)
+  spdlog::spdlog
+  gtsam)
 target_include_directories(${PROJECT_NAME} PUBLIC 
                            $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
                            $<INSTALL_INTERFACE:include>)

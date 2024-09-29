@@ -8,7 +8,7 @@ Dataset:
 
 Log:
   path: "/mnt/i/project/slam/tmp/test/log/"
-  enable_std: false
+  enable_std: true
   
 Visualizer:
   enable: false
@@ -31,12 +31,9 @@ Tracking:
   motion_model: "constant_velocity" # fixed, constant_velocity, imu, constant_acceleration(not supported)
 
 LocalMapping:
-  multi_thread: false
+  multi_thread: true
 
 Initialization:
-  thresh: 0.5
-
-LocalMapping:
   thresh: 0.5
 
 GlobalMapping:

@@ -55,7 +55,6 @@ Frame::Ptr Tracking::process(const TrackingInput &input) {
   static int process_total_count = 0;
 
   TimeStatistics tracking_statistics("Tracking");
-
   tracking_statistics.tic();
 
   curr_frame_.reset(
