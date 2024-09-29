@@ -214,6 +214,7 @@ bool System::initializeLog(const cv::FileNode &node) {
 
   std::string path;
   node["path"] >> path;
+  path = std::string(PROJECT_DIR) + "/" + path;
 
   if (node["enable_std"].empty()) {
     initSpdlog("slam_components", path);
