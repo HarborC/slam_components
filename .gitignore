@@ -163,3 +163,4 @@ debug/*
 *.zip
 
 vscode/
+log/*

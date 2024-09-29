@@ -7,8 +7,8 @@ Dataset:
   start_idx: 800
 
 Log:
-  path: "/mnt/i/project/slam/tmp/test/log/"
-  enable_std: true
+  path: "log/mh02/"
+  enable_std: false
   
 Visualizer:
   enable: false
@@ -31,7 +31,7 @@ Tracking:
   motion_model: "constant_velocity" # fixed, constant_velocity, imu, constant_acceleration(not supported)
 
 LocalMapping:
-  multi_thread: true
+  multi_thread: false
 
 Initialization:
   thresh: 0.5
