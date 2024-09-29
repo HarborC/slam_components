@@ -63,9 +63,9 @@ void Frame::setVelocity(const Eigen::Vector3d &vel) {
 }
 
 void Frame::addData(const std::vector<cv::Mat> &_imgs,
-                    const std::vector<std::vector<Eigen::Vector2d>> &_keypoints,
+                    const std::vector<torch::Tensor> &_keypoints,
                     const std::vector<std::vector<Eigen::Vector3d>> &_bearings,
-                    const std::vector<cv::Mat> &_descriptors,
+                    const std::vector<torch::Tensor> &_descriptors,
                     const std::vector<cv::Mat> &_masks) {
   if (_imgs.size()) {
     assert(_imgs.size() == camNum());
@@ -79,7 +79,7 @@ void Frame::addData(const std::vector<cv::Mat> &_imgs,
     keypoints_ = _keypoints;
     feature_ids_.resize(keypoints_.size());
     for (size_t i = 0; i < feature_ids_.size(); ++i) {
-      feature_ids_[i].resize(keypoints_[i].size(), -1);
+      feature_ids_[i].resize(keypoints_[i].size(0), -1);
     }
   }
 
@@ -101,83 +101,121 @@ void Frame::addData(const std::vector<cv::Mat> &_imgs,
   }
 }
 
-void Frame::extractFeature(std::string detector_type) {
-  Detector detector;
-  for (size_t cam_id = 0; cam_id < camNum(); ++cam_id) {
-    std::vector<cv::KeyPoint> kpts;
-    if (detector_type == "ORB") {
-      if (masks_.empty()) {
-        detector.detectORB(imgs_[cam_id], kpts, descriptors_[cam_id]);
-      } else {
-        detector.detectORB(imgs_[cam_id], kpts, descriptors_[cam_id],
-                           masks_[cam_id]);
-      }
-    } else if (detector_type == "SIFT") {
-      if (masks_.empty()) {
-        detector.detectSIFT(imgs_[cam_id], kpts, descriptors_[cam_id]);
-      } else {
-        detector.detectSIFT(imgs_[cam_id], kpts, descriptors_[cam_id],
-                            masks_[cam_id]);
-      }
-    } else {
-      std::cerr << "Unknown detector type: " << detector_type << std::endl;
-      return;
-    }
-    keypoints_[cam_id].resize(kpts.size());
-    for (size_t pt_id = 0; pt_id < kpts.size(); ++pt_id) {
-      keypoints_[cam_id][pt_id] =
-          Eigen::Vector2d(kpts[pt_id].pt.x, kpts[pt_id].pt.y);
-    }
-    feature_ids_[cam_id].resize(keypoints_[cam_id].size(), -1);
-  }
-}
+// void Frame::extractFeature(std::string detector_type) {
+//   Detector detector;
+//   for (size_t cam_id = 0; cam_id < camNum(); ++cam_id) {
+//     std::vector<cv::KeyPoint> kpts;
+//     if (detector_type == "ORB") {
+//       if (masks_.empty()) {
+//         detector.detectORB(imgs_[cam_id], kpts, descriptors_[cam_id]);
+//       } else {
+//         detector.detectORB(imgs_[cam_id], kpts, descriptors_[cam_id],
+//                            masks_[cam_id]);
+//       }
+//     } else if (detector_type == "SIFT") {
+//       if (masks_.empty()) {
+//         detector.detectSIFT(imgs_[cam_id], kpts, descriptors_[cam_id]);
+//       } else {
+//         detector.detectSIFT(imgs_[cam_id], kpts, descriptors_[cam_id],
+//                             masks_[cam_id]);
+//       }
+//     } else {
+//       std::cerr << "Unknown detector type: " << detector_type << std::endl;
+//       return;
+//     }
+//     keypoints_[cam_id].resize(kpts.size());
+//     for (size_t pt_id = 0; pt_id < kpts.size(); ++pt_id) {
+//       keypoints_[cam_id][pt_id] =
+//           Eigen::Vector2d(kpts[pt_id].pt.x, kpts[pt_id].pt.y);
+//     }
+//     feature_ids_[cam_id].resize(keypoints_[cam_id].size(), -1);
+//   }
+// }
 
 cv::Mat Frame::drawKeyPoint(const int &cam_id) {
-  cv::Mat img = imgs_[cam_id].clone();
-  if (img.channels() == 1) {
-    cv::cvtColor(img, img, cv::COLOR_GRAY2BGR);
+  cv::Mat all_img;
+  for (size_t c_i = 0; c_i < camNum(); ++c_i) {
+    if (cam_id >= 0 && c_i != cam_id) {
+      continue;
+    }
+
+    int keypoint_num = keypoints_[c_i].size(0);
+    auto keypoints = keypoints_[c_i].accessor<float, 2>();
+
+    SPDLOG_INFO("keypoint_num: {}", keypoint_num);
+
+    cv::Mat img = imgs_[c_i].clone();
+    if (img.channels() == 1) {
+      cv::cvtColor(img, img, cv::COLOR_GRAY2BGR);
+    }
+
+    for (size_t i = 0; i < keypoint_num; ++i) {
+      cv::circle(img, cv::Point(keypoints[i][0], keypoints[i][1]), 2,
+                 cv::Scalar(0, 255, 0), 2);
+    }
+
+    if (all_img.empty()) {
+      all_img = img;
+    } else {
+      cv::hconcat(all_img, img, all_img);
+    }
   }
 
-  for (size_t i = 0; i < keypoints_[cam_id].size(); ++i) {
-    cv::circle(img,
-               cv::Point(keypoints_[cam_id][i](0), keypoints_[cam_id][i](1)), 2,
-               cv::Scalar(0, 255, 0), 2);
-  }
-  return img;
+  return all_img;
 }
 
 cv::Mat Frame::drawMatchedKeyPoint(const int &cam_id) {
-  cv::Mat img = imgs_[cam_id].clone();
-  if (img.channels() == 1) {
-    cv::cvtColor(img, img, cv::COLOR_GRAY2BGR);
-  }
-
-  for (size_t i = 0; i < keypoints_[cam_id].size(); ++i) {
-    if (feature_ids_[cam_id][i] < 0) {
+  cv::Mat all_img;
+  for (size_t c_i = 0; c_i < camNum(); ++c_i) {
+    if (cam_id >= 0 && c_i != cam_id) {
       continue;
     }
-    cv::circle(img,
-               cv::Point(keypoints_[cam_id][i](0), keypoints_[cam_id][i](1)), 2,
-               cv::Scalar(0, 255, 0), 2);
-    cv::putText(img, std::to_string(feature_ids_[cam_id][i]),
-                cv::Point(keypoints_[cam_id][i](0), keypoints_[cam_id][i](1)),
-                cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(0, 255, 0), 1);
+
+    int keypoint_num = keypoints_[c_i].size(0);
+    auto keypoints = keypoints_[c_i].accessor<float, 2>();
+
+    cv::Mat img = imgs_[c_i].clone();
+    if (img.channels() == 1) {
+      cv::cvtColor(img, img, cv::COLOR_GRAY2BGR);
+    }
+
+    for (size_t i = 0; i < keypoint_num; ++i) {
+      if (feature_ids_[c_i][i] < 0) {
+        continue;
+      }
+      cv::circle(img, cv::Point(keypoints[i][0], keypoints[i][1]), 2,
+                 cv::Scalar(0, 255, 0), 2);
+      cv::putText(img, std::to_string(feature_ids_[c_i][i]),
+                  cv::Point(keypoints[i][0], keypoints[i][1]),
+                  cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(0, 255, 0), 1);
+    }
+
+    if (all_img.empty()) {
+      all_img = img;
+    } else {
+      cv::hconcat(all_img, img, all_img);
+    }
   }
-  return img;
+
+  return all_img;
 }
 
-cv::Mat Frame::drawRawImage() {
+cv::Mat Frame::drawRawImage(const int &cam_id) {
   cv::Mat all_img;
-  for (size_t i = 0; i < camNum(); ++i) {
-    cv::Mat img_copy = imgs_[i].clone();
-    cv::putText(img_copy, std::to_string(id_) + "-" + std::to_string(i),
+  for (size_t c_i = 0; c_i < camNum(); ++c_i) {
+    if (cam_id >= 0 && c_i != cam_id) {
+      continue;
+    }
+
+    cv::Mat img = imgs_[c_i].clone();
+    cv::putText(img, std::to_string(id_) + "-" + std::to_string(c_i),
                 cv::Point(10, 30), cv::FONT_HERSHEY_SIMPLEX, 1,
                 cv::Scalar(0, 255, 0), 2);
 
-    if (i == 0) {
-      all_img = img_copy;
+    if (all_img.empty()) {
+      all_img = img;
     } else {
-      cv::hconcat(all_img, img_copy, all_img);
+      cv::hconcat(all_img, img, all_img);
     }
   }
 

@@ -167,40 +167,41 @@ void Tracking::propressImage(const Frame::Ptr &frame) {
 
     torch::Tensor img_tensor =
         torch::from_blob(image.data, {image.rows, image.cols, 3}, torch::kByte);
-    images.push_back(img_tensor);
+
+    images.push_back(img_tensor.clone());
   }
 
   torch::Tensor images_tensor =
       torch::stack(images)
           .permute({0, 3, 1, 2})
           .to(network_->droid_net_->device_, torch::kFloat32);
-  images_tensor =
-      images_tensor.index({torch::indexing::Slice(), torch::tensor({2, 1, 0})})
-          .to(network_->droid_net_->device_) /
-      255.0;
-
-  frame->images_superpoint_torch_ = images_tensor;
-  frame->images_droid_torch_ = images_tensor.sub(MEAN).div(STDV).unsqueeze(0);
+  images_tensor = images_tensor.index(
+                      {torch::indexing::Slice(), torch::tensor({2, 1, 0})}) /
+                  255.0;
+  frame->images_tensor_ = images_tensor.clone();
 }
 
 void Tracking::extractDenseFeature(const Frame::Ptr &frame,
                                    bool only_feature_map) {
-  // 禁用梯度计算
   // torch::NoGradGuard no_grad;
 
   // 自动混合精度推理
   at::autocast::set_autocast_cache_enabled(true);
 
   // 检查图像是否已预处理
-  if (!frame->images_droid_torch_.defined()) {
-    SPDLOG_ERROR("images_droid_torch_ is not defined");
+  if (!frame->images_tensor_.defined()) {
+    SPDLOG_ERROR("images_tensor_ is not defined");
     return;
   }
 
+  torch::Tensor images_droid_torch =
+      frame->images_tensor_.clone().sub(MEAN).div(STDV).unsqueeze(0);
+
   // 提取 feature map
   if (!frame->feature_map_.defined()) {
+    torch::Tensor feature_input = images_droid_torch;
     std::vector<torch::jit::IValue> input_tensors;
-    input_tensors.push_back(frame->images_droid_torch_);
+    input_tensors.push_back(feature_input);
     frame->feature_map_ =
         this->network_->droid_net_->droid_fnet_.forward(input_tensors)
             .toTensor()
@@ -210,8 +211,9 @@ void Tracking::extractDenseFeature(const Frame::Ptr &frame,
   // 如果需要提取 context map 和 net map
   if (!only_feature_map &&
       (!frame->context_map_.defined() || !frame->net_map_.defined())) {
+    torch::Tensor context_input = images_droid_torch;
     std::vector<torch::jit::IValue> input_tensors;
-    input_tensors.push_back(frame->images_droid_torch_);
+    input_tensors.push_back(context_input);
     torch::Tensor output =
         this->network_->droid_net_->droid_cnet_.forward(input_tensors)
             .toTensor();
@@ -220,8 +222,6 @@ void Tracking::extractDenseFeature(const Frame::Ptr &frame,
     // 保存 net_map 和 context_map
     frame->net_map_ = tensors[0].tanh().squeeze(0);
     frame->context_map_ = tensors[1].relu().squeeze(0);
-
-    frame->images_droid_torch_.reset();
   }
 
   at::autocast::clear_cache();
@@ -229,16 +229,11 @@ void Tracking::extractDenseFeature(const Frame::Ptr &frame,
 }
 
 bool Tracking::motionFilter() {
-  // SPDLOG_INFO("motion filter");
-
-  // 禁用梯度计算
   // torch::NoGradGuard no_grad;
 
   // 计算 ht 和 wd
-  int64_t ht =
-      curr_frame_->images_droid_torch_.size(-2) / image_downsample_scale_;
-  int64_t wd =
-      curr_frame_->images_droid_torch_.size(-1) / image_downsample_scale_;
+  int64_t ht = curr_frame_->images_tensor_.size(-2) / image_downsample_scale_;
+  int64_t wd = curr_frame_->images_tensor_.size(-1) / image_downsample_scale_;
 
   // 自动混合精度推理
   at::autocast::set_autocast_cache_enabled(true);
@@ -248,32 +243,12 @@ bool Tracking::motionFilter() {
                               .unsqueeze(0)
                               .unsqueeze(0);
 
-  // SPDLOG_INFO("getCoordsGrid");
-
-  // SPDLOG_INFO("coords0 shape: {}", coords0.sizes());
-
-  // SPDLOG_INFO("last_keyframe_->feature_map_ shape: {}",
-  //             last_keyframe_->feature_map_.sizes());
-
-  // SPDLOG_INFO("curr_frame_->feature_map_ shape: {}",
-  //             curr_frame_->feature_map_.sizes());
-
   // 计算相关性
   torch::Tensor corr = CorrBlock(
       last_keyframe_->feature_map_.index({torch::indexing::Slice(0, 1)})
           .unsqueeze(0),
       curr_frame_->feature_map_.index({torch::indexing::Slice(0, 1)})
           .unsqueeze(0))(coords0);
-
-  // SPDLOG_INFO("CorrBlock");
-
-  // SPDLOG_INFO("corr shape: {}", corr.sizes());
-
-  // SPDLOG_INFO("last_keyframe_->net_map_ shape: {}",
-  //             last_keyframe_->net_map_.sizes());
-
-  // SPDLOG_INFO("last_keyframe_->context_map_ shape: {}",
-  //             last_keyframe_->context_map_.sizes());
 
   // 使用 droid_update 计算
   std::vector<torch::jit::IValue> input_tensors;
@@ -285,12 +260,8 @@ bool Tracking::motionFilter() {
           .unsqueeze(0));
   input_tensors.push_back(corr);
 
-  // SPDLOG_INFO("push data");
-
   auto output =
       this->network_->droid_net_->droid_update_.forward(input_tensors);
-
-  // SPDLOG_INFO("update");
 
   auto outputs = output.toTuple();
 
@@ -298,8 +269,6 @@ bool Tracking::motionFilter() {
   at::autocast::set_autocast_cache_enabled(false);
 
   torch::Tensor delta = outputs->elements()[1].toTensor();
-
-  // SPDLOG_INFO("output");
 
   if (delta.norm(2, -1).mean().item<float>() > motion_filter_thresh_) {
     return true;
@@ -309,24 +278,29 @@ bool Tracking::motionFilter() {
 }
 
 void Tracking::extractSparseFeature(const Frame::Ptr &frame) {
-  if (0)
-    frame->extractFeature();
-  else {
-    std::vector<std::vector<Eigen::Vector2d>> keypoints_vec;
-    std::vector<cv::Mat> descriptors_vec;
-    for (size_t i = 0; i < frame->imgs().size(); ++i) {
-      auto sparse_result = network_->superpoint_net_->net_->forward(
-          frame->images_superpoint_torch_[i].unsqueeze(0));
+  // if (0)
+  //   frame->extractFeature();
+  // else {
+  std::vector<torch::Tensor> keypoints_vec;
+  std::vector<torch::Tensor> descriptors_vec;
+  for (size_t i = 0; i < frame->imgs().size(); ++i) {
+    torch::Tensor img_tensor =
+        frame->images_tensor_.index({static_cast<int64_t>(i)}).clone();
+    auto sparse_result = network_->superpoint_net_->net_->forward(
+        img_tensor.unsqueeze(0), network_->superpoint_net_->nms_radius_,
+        network_->superpoint_net_->max_num_keypoints_,
+        network_->superpoint_net_->detection_threshold_,
+        network_->superpoint_net_->remove_borders_);
 
-      torch::Tensor keypoint = std::get<0>(sparse_result);
-      torch::Tensor descriptor = std::get<1>(sparse_result);
+    torch::Tensor keypoint = std::get<0>(sparse_result);
+    torch::Tensor descriptor = std::get<1>(sparse_result);
 
-      std::vector<Eigen::Vector2d> keypoints;
-      cv::Mat descriptors;
-      // TODO: convert tensor to cv::Mat
-    }
-    frame->images_superpoint_torch_.reset();
+    keypoints_vec.push_back(keypoint.squeeze(0).to(torch::kCPU));
+    descriptors_vec.push_back(descriptor.squeeze(0).to(torch::kCPU));
   }
+
+  frame->addData({}, keypoints_vec, {}, descriptors_vec);
+  // }
 }
 
 void Tracking::publishRawImage() {
@@ -334,6 +308,11 @@ void Tracking::publishRawImage() {
     cv::Mat raw_img = curr_frame_->drawRawImage();
     viz_server_->showImage("curr_keyframe/raw_images",
                            int64_t(curr_frame_->timestamp() * 1e6), raw_img);
+
+    cv::Mat keypoint_img = curr_frame_->drawKeyPoint();
+    viz_server_->showImage("curr_keyframe/keypoints",
+                           int64_t(curr_frame_->timestamp() * 1e6),
+                           keypoint_img);
   }
 }
 

@@ -14,5 +14,5 @@ make install
 # rm -rf build
 
 # rm -r ../../../tmp/test/*
-# ./slam_components/apps/eruco_val
-./slam_components/apps/seq_data_test
+./slam_components/apps/eruco_val
+# ./slam_components/apps/seq_data_test
